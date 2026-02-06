@@ -35,78 +35,110 @@ class ApiService {
       }
   }
 
+  // --- Әкімші (Admin) ---
+  static Future<List<dynamic>> getAllUsers() async {
+    final res = await http.get(Uri.parse('$baseUrl/admin/users'));
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body['users'] ?? [];
+    } else {
+      throw Exception(body['error'] ?? 'Пайдаланушыларды жүктеу қатесі.');
+    }
+  }
 
-  // --- Себет (Cart) Функциялары ---
-  
-  // 1. Себеттегі тауарларды алу
-  static Future<List<dynamic>> getCart(String userId) async {
-    final res = await http.get(Uri.parse('$baseUrl/cart/$userId'));
+  static Future<Map<String, dynamic>> createRecipe(Map<String, dynamic> recipe) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/admin/recipes'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(recipe),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 201 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Рецепт қосу қатесі.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> createUser(Map<String, dynamic> user) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/admin/users'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(user),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 201 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Пайдаланушы қосу қатесі.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateUser(String id, Map<String, dynamic> user) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/admin/users/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(user),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Пайдаланушыны жаңарту қатесі.');
+    }
+  }
+
+  static Future<void> deleteUser(String id) async {
+    final res = await http.delete(Uri.parse('$baseUrl/admin/users/$id'));
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['error'] ?? 'Пайдаланушыны жою қатесі.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateRecipe(String id, Map<String, dynamic> recipe) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/admin/recipes/$id'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(recipe),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Рецептті жаңарту қатесі.');
+    }
+  }
+
+  static Future<void> deleteRecipe(String id) async {
+    final res = await http.delete(Uri.parse('$baseUrl/admin/recipes/$id'));
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['error'] ?? 'Рецептті жою қатесі.');
+    }
+  }
+
+  // --- Таңдаулылар (Favorites) ---
+  static Future<Map<String, dynamic>> toggleFavorite(String userId, String productId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/favorites/toggle'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'productId': productId}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Таңдаулыларға қосу қатесі.');
+    }
+  }
+
+  static Future<List<dynamic>> getFavorites(String userId) async {
+    final res = await http.get(Uri.parse('$baseUrl/favorites/$userId'));
     if (res.statusCode == 200) {
       return jsonDecode(res.body);
     } else {
-      throw Exception('Себетті жүктеу қатесі: ${res.statusCode}');
-    }
-  }
-
-  // 2. Себетке тауар қосу (home.dart-та қолданылады)
-  static Future<Map<String, dynamic>> addToCart(String userId, String productId, int quantity) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/cart/add'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'userId': userId, 'productId': productId, 'quantity': quantity}),
-    );
-    final body = jsonDecode(res.body);
-    if (res.statusCode == 200) {
-      return {'ok': true, 'message': body['message']};
-    } else {
-      throw Exception(body['error'] ?? 'Себетке қосу қатесі.');
-    }
-  }
-
-  // 3. Тауардың санын өзгерту (cart.dart-та қолданылады)
-  static Future<Map<String, dynamic>> updateCartItemQuantity(String userId, String productId, int quantity) async {
-    final res = await http.put(
-      Uri.parse('$baseUrl/cart/update'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'userId': userId, 'productId': productId, 'quantity': quantity}),
-    );
-    final body = jsonDecode(res.body);
-    if (res.statusCode == 200) {
-      return {'ok': true, 'message': body['message']};
-    } else {
-      throw Exception(body['error'] ?? 'Санын өзгерту қатесі.');
-    }
-  }
-
-  // 4. Тауарды себеттен жою (cart.dart-та қолданылады)
-  static Future<Map<String, dynamic>> removeCartItem(String userId, String productId) async {
-    // 🚨 ТЕКСЕРУ: Бэкендте DELETE request-ті body арқылы жіберуіңіз керек
-    final req = http.Request('DELETE', Uri.parse('$baseUrl/cart/remove'));
-    req.headers['Content-Type'] = 'application/json';
-    req.body = jsonEncode({'userId': userId, 'productId': productId});
-    
-    final res = await req.send();
-    final body = jsonDecode(await res.stream.bytesToString());
-
-    if (res.statusCode == 200) {
-      return {'ok': true, 'message': body['message']};
-    } else {
-      throw Exception(body['error'] ?? 'Жою қатесі.');
-    }
-  }
-  
-  // 5. Тапсырыс беру функциясы (cart.dart-та қолданылады)
-  static Future<Map<String, dynamic>> checkout(String userId) async {
-    final res = await http.post(
-      Uri.parse('$baseUrl/checkout'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'userId': userId}),
-    );
-    final body = jsonDecode(res.body);
-    if (res.statusCode == 200) {
-      return {'ok': true, 'message': body['message']};
-    } else {
-      throw Exception(body['error'] ?? 'Тапсырыс беру қатесі.');
+      throw Exception('Таңдаулыларды жүктеу қатесі: ${res.statusCode}');
     }
   }
 }

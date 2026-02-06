@@ -52,7 +52,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
     if (name.isEmpty || surname.isEmpty || phone.isEmpty || !_isValidEmail(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пожалуйста, барлық жеке деректерді тексеріңіз.')),
+        const SnackBar(content: Text('Өтінеміз, барлық жеке деректерді тексеріңіз.')),
       );
       return;
     }
@@ -182,7 +182,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Тіркеліп, үй тағамдарын сатып алыңыз',
+                    'Тіркеліп, рецепттерді таңдаулыға сақтаңыз',
                     style: TextStyle(fontSize: 14, color: Colors.white70),
                   ),
                 ],
@@ -228,11 +228,11 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // Email
+                    // Электрондық пошта
                     TextField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
-                      decoration: _buildInputDecoration('Email', Icons.email_outlined),
+                      decoration: _buildInputDecoration('Электрондық пошта', Icons.email_outlined),
                     ),
                     const SizedBox(height: 16),
 

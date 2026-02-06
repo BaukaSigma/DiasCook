@@ -36,22 +36,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   }
 
   bool _isValidEmail(String email) => email.contains('@') && email.contains('.');
-  
-  // Құпия сөзді тексеру (Бэкендтегі талаптарға сәйкес)
-  bool _isValidPassword(String pass) {
-    if (pass.length < 8) return false;
-    if (!pass.contains(RegExp(r'[A-Z]'))) return false;
-    if (!pass.contains(RegExp(r'[a-z]'))) return false;
-    if (!pass.contains(RegExp(r'\d'))) return false;
-    if (!pass.contains(RegExp(r'[!@#$%^&*()_+={}\[\]|\\:;"<,>.?/~`]'))) return false;
-    return true;
-  }
 
   // 1. Кодты жіберу
   Future<void> _sendCode() async {
     final email = emailController.text.trim();
     if (!_isValidEmail(email)) {
-      _showSnackBar('Дұрыс email адресін енгізіңіз.');
+      _showSnackBar('Дұрыс электрондық пошта адресін енгізіңіз.');
       return;
     }
 
@@ -67,10 +57,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       final body = jsonDecode(res.body);
 
       if (res.statusCode == 200) {
-        _showSnackBar('Қалпына келтіру коды email-ге жіберілді.');
+        _showSnackBar('Қалпына келтіру коды электрондық поштаға жіберілді.');
         setState(() => _currentStep = ResetStep.verifyCode);
       } else if (res.statusCode == 404) {
-        _showSnackBar(body['error'] ?? 'Бұл email тіркелмеген.');
+        _showSnackBar(body['error'] ?? 'Бұл электрондық пошта тіркелмеген.');
       } else {
         _showSnackBar(body['error'] ?? 'Сұрау кезінде қате пайда болды.');
       }
@@ -126,8 +116,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    // 🚨 Құпия сөзді тексеру
-    if (!_isValidPassword(newPassword)) {
+    // 🚨 Используем вынесенную функцию валидации
+    if (!validatePassword(newPassword)) {
       _showSnackBar('Құпия сөз кемінде 8 таңбадан тұруы керек және бір үлкен әріп, бір кіші әріп, бір сан және бір арнайы символ болуы керек.');
       return;
     }
@@ -177,12 +167,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     switch (_currentStep) {
       case ResetStep.enterEmail:
         titleText = 'Құпия сөзді қалпына келтіру';
-        subtitleText = 'Email-іңізді енгізіңіз';
+        subtitleText = 'Электрондық поштаңызды енгізіңіз';
         icon = Icons.email_outlined;
         break;
       case ResetStep.verifyCode:
         titleText = 'Растау кодын енгізіңіз';
-        subtitleText = 'Email-ге жіберілген код';
+        subtitleText = 'Поштаға жіберілген код';
         icon = Icons.key_outlined;
         break;
       case ResetStep.resetPassword:
@@ -196,7 +186,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       backgroundColor: Colors.white,
       body: Stack(
         children: [
-          
           Positioned(
             top: 0,
             left: 0,
@@ -220,11 +209,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(
-                    icon, 
-                    size: 70,
-                    color: Colors.white,
-                  ),
+                  Icon(icon, size: 70, color: Colors.white),
                   const SizedBox(height: 8),
                   Text(
                     titleText,
@@ -243,7 +228,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
             ),
           ),
-          
           Positioned.fill(
             child: SingleChildScrollView(
               padding: EdgeInsets.only(top: formTopPadding),
@@ -253,11 +237,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 20),
-                    
                     _buildStepContent(),
-                    
                     const SizedBox(height: 24),
-                    
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
@@ -274,9 +255,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                         child: _getButtonChild(),
                       ),
                     ),
-
                     const SizedBox(height: 16),
-                    
                     Center(
                       child: TextButton(
                         onPressed: () {
@@ -320,7 +299,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     return Column(
       children: [
         const Text(
-          'Аккаунтыңызға байланыстырылған email-ді енгізіңіз. Біз сізге растау кодын жібереміз.',
+          'Аккаунтыңызға байланыстырылған электрондық поштаны енгізіңіз. Біз сізге растау кодын жібереміз.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, color: Colors.grey),
         ),
@@ -328,7 +307,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         TextField(
           controller: emailController,
           keyboardType: TextInputType.emailAddress,
-          decoration: _buildInputDecoration('Email адресі', Icons.email_outlined),
+          decoration: _buildInputDecoration('Электрондық пошта', Icons.email_outlined),
         ),
       ],
     );
@@ -442,4 +421,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         return _resetPassword;
     }
   }
+}
+
+// 🚨 ВЫНЕСЕННАЯ ФУНКЦИЯ ДЛЯ ТЕСТОВ
+bool validatePassword(String pass) {
+  if (pass.length < 8) return false;
+  if (!pass.contains(RegExp(r'[A-Z]'))) return false;
+  if (!pass.contains(RegExp(r'[a-z]'))) return false;
+  if (!pass.contains(RegExp(r'\d'))) return false;
+  if (!pass.contains(RegExp(r'[!@#$%^&*()_+={}\[\]|\\:;"<,>.?/~`]'))) return false;
+  return true;
 }

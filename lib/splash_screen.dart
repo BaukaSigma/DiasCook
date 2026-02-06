@@ -36,7 +36,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Загрузка...',
+              'Жүктелуде...',
               style: TextStyle(fontSize: 16),
             ),
           ],

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import 'login.dart';
 
-// Виджет для отображения единицы информации в красивой карточке
 Widget _buildInfoCard({
   required BuildContext context,
   required IconData icon,
@@ -35,25 +34,15 @@ Widget _buildInfoCard({
   );
 }
 
-// Виджет для отображения контента профиля (при успешной загрузке)
 Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
   final fullName = '${user['name'] ?? ''} ${user['surname'] ?? ''}';
-  // Стандартная высота AppBar обычно около 56.0. 
-  // Мы используем это значение для расчета отступа.
   const double appBarHeight = kToolbarHeight; 
 
   return SingleChildScrollView(
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // ------------------------------------
-        // Блок заголовка, аватара и градиента
-        // ------------------------------------
         Container(
-          // ИСПРАВЛЕНО: Устанавливаем padding сверху равный высоте системного статус-бара
-          // плюс стандартная высота AppBar (56.0). Затем вычитаем высоту 
-          // нашего текста (например, 20), чтобы скомпенсировать.
-          // ИЛИ, проще: просто используем стандартную высоту AppBar (56) + отступ статус-бара.
           padding: EdgeInsets.only(
             top: MediaQuery.of(context).padding.top,
             bottom: 24, // Отступ от аватара до низа градиента
@@ -71,16 +60,10 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
           ),
           child: Column(
             children: [
-              // ------------------------------------
-              // Блок заголовка "Профиль"
-              // ------------------------------------
               Padding(
-                // Добавляем вертикальный отступ, чтобы имитировать центрирование в AppBar (56.0)
-                // Стандартный AppBar имеет внутренний отступ, здесь мы просто добавляем
-                // отступы сверху и снизу вокруг текста.
                 padding: const EdgeInsets.symmetric(vertical: (appBarHeight - 20) / 2),
                 child: Text(
-                  'Профиль',
+                  '',
                   style: (Theme.of(context).appBarTheme.titleTextStyle ?? 
                           Theme.of(context).textTheme.titleLarge)
                       ?.copyWith(
@@ -92,18 +75,14 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
                           color: Colors.white),
                 ),
               ),
-              // Убираем лишний SizedBox, так как вертикальный отступ теперь в Padding
-              // const SizedBox(height: 30), 
-              
-              // Аватар и имя
+
               const CircleAvatar(
                 radius: 50,
                 backgroundColor: Colors.white,
                 child: Icon(Icons.person, size: 60, color: Colors.orange),
               ),
               const SizedBox(height: 16),
-              
-              // ИСПРАВЛЕНО: Добавлен горизонтальный Padding для имени и фамилии
+            
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Text(
@@ -128,9 +107,6 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
           ),
         ),
 
-        // ------------------------------------
-        // Блок основной информации
-        // ------------------------------------
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
@@ -207,11 +183,11 @@ Widget _buildGuestContent(BuildContext context) {
         children: [
           const Icon(Icons.lock_person_outlined, size: 90, color: Colors.deepOrange),
           const SizedBox(height: 20),
-          const Text('Сіз кірмегенсіз (Гость)',
+          const Text('Сіз кірмегенсіз (Қонақ)',
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
           const Text(
-            'Профиль деректерін көру үшін кіріңіз немесе тіркеліңіз.',
+            'Парақша деректерін көру үшін кіріңіз немесе тіркеліңіз.',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey, fontSize: 16),
           ),

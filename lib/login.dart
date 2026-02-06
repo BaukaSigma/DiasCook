@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'registration.dart';
 import 'home.dart';
 import 'forgot_password.dart';
+import 'admin/admin_panel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,7 +39,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (!_isValidEmail(email) || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Пожалуйста, енгізген деректеріңізді тексеріңіз.')),
+        const SnackBar(content: Text('Өтінеміз, енгізген деректеріңізді тексеріңіз.')),
       );
       return;
     }
@@ -57,17 +58,29 @@ class _LoginScreenState extends State<LoginScreen> {
       if (res.statusCode == 200 && body['ok'] == true) { 
       // ✅ 1. Получаем ID пользователя из ответа
       final loggedInUserId = body['userId']; 
+      final isAdmin = body['isAdmin'] == true;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Сәтті кірдіңіз!'), backgroundColor: Colors.green),
       );
       
-      // ✅ 2. ПЕРЕДАЕМ ID В HOME SCREEN (вместо 'guest')
-      Navigator.pushReplacement(
-        context,
-        // Передаем фактический ID пользователя
-        MaterialPageRoute(builder: (_) => HomeScreen(userId: loggedInUserId)), 
-      );
+      // ✅ 2. ADMIN болса — админ панельге, әйтпесе HomeScreen
+      if (isAdmin) {
+        final adminData = (body['user'] as Map<String, dynamic>?) ?? {
+          'userId': loggedInUserId,
+          'email': email,
+          'isAdmin': true,
+        };
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => AdminPanelScreen(admin: adminData)),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => HomeScreen(userId: loggedInUserId)), 
+        );
+      }
       } else {
         // Қате
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'CookPad',
                     style: TextStyle(
-                      fontSize: 30,
+                      fontSize: 28,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -180,12 +193,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Email
+                    // Электрондық пошта
                     TextField(
                       controller: emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'Электрондық пошта',
                         prefixIcon: const Icon(Icons.email_outlined, color: Colors.orange),
                         filled: true,
                         fillColor: Colors.grey.shade100,
