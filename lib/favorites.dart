@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'login.dart';
-import 'recipe_detail.dart';
+import 'product_detail.dart';
 
 class FavoritesScreen extends StatefulWidget {
   final String userId;
@@ -68,7 +69,7 @@ class FavoritesScreenState extends State<FavoritesScreen> {
           return Center(child: Text('Қате: ${snapshot.error}'));
         }
 
-        final favorites = snapshot.data ?? [];
+        final favorites = snapshot.data?.reversed.toList() ?? [];
         if (favorites.isEmpty) {
           return const _EmptyFavoritesState();
         }
@@ -89,7 +90,24 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: imageUrl.toString().startsWith('http')
-                        ? Image.network(imageUrl, width: 52, height: 52, fit: BoxFit.cover)
+                        ? CachedNetworkImage(
+                            imageUrl: imageUrl, 
+                            width: 52, 
+                            height: 52, 
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              width: 52,
+                              height: 52,
+                              color: Colors.grey.shade200,
+                              child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            ),
+                            errorWidget: (context, url, error) => Container(
+                              width: 52,
+                              height: 52,
+                              color: Colors.grey.shade300,
+                              child: const Icon(Icons.error),
+                            ),
+                          )
                         : Image.asset(imageUrl, width: 52, height: 52, fit: BoxFit.cover),
                   ),
                   title: Text(item['title'] ?? 'Атауы жоқ'),
@@ -97,15 +115,41 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                     item['category'] ?? '',
                     style: TextStyle(color: Colors.orange.shade800),
                   ),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: () => _toggleFavorite(item),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.add_shopping_cart, color: Colors.orange),
+                        onPressed: () async {
+                          if (widget.userId == 'guest') {
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Себетке қосу үшін кіріңіз.')));
+                            return;
+                          }
+                          try {
+                            // ignore: use_build_context_synchronously
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Себетке қосылуда...'), duration: Duration(milliseconds: 500)));
+                            await ApiService.addToCart(widget.userId, item['_id']);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Себетке қосылды!')));
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Қате: $e')));
+                            }
+                          }
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, color: Colors.red),
+                        onPressed: () => _toggleFavorite(item),
+                      ),
+                    ],
                   ),
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => RecipeDetailScreen(
+                        builder: (_) => ProductDetailScreen(
                           product: item,
                           userId: widget.userId,
                         ),

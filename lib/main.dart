@@ -12,7 +12,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Рецепттер әлемі',
+      title: '\u0420\u0435\u0446\u0435\u043f\u0442\u0442\u0435\u0440 \u04d9\u043b\u0435\u043c\u0456',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF28C28)),
         useMaterial3: true,

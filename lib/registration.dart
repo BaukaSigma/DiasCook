@@ -23,7 +23,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   bool _obscure1 = true;
   bool _obscure2 = true;
   bool _loading = false;
-  // TODO: Бұл жердегі URL-ді мобильді құрылғыдан тексеріп жатсаңыз, IP-адреске өзгерту қажет.
   final String _baseUrl = 'http://localhost:3001/api'; 
 
   @override
@@ -130,7 +129,6 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           )
         : const Text('Тіркелу');
     
-    // Ескерту: Жоғарғы плашканың биіктігі 220, форманың отступы 260.
     final double topContainerHeight = 220; 
     final double formTopPadding = 260; 
 

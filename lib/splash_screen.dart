@@ -12,7 +12,6 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // 2 секунды
     Future.delayed(const Duration(seconds: 2), () {
       Navigator.pushReplacement(
         context,
@@ -36,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Жүктелуде...',
+              '\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435...',
               style: TextStyle(fontSize: 16),
             ),
           ],

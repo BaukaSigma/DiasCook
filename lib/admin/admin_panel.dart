@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import '../login.dart';
-import '../recipe_detail.dart';
+import '../product_detail.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final Map<String, dynamic> admin;
@@ -384,7 +384,7 @@ class _AdminRecipesTabState extends State<AdminRecipesTab> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => RecipeDetailScreen(product: recipe)),
+                            MaterialPageRoute(builder: (_) => ProductDetailScreen(product: recipe, userId: 'admin')),
                           );
                         },
                       ),

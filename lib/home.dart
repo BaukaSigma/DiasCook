@@ -1,10 +1,12 @@
-// home.dart
+﻿// home.dart
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart'; 
 import 'profile.dart'; 
 import 'search.dart';
 import 'favorites.dart';
-import 'recipe_detail.dart'; 
+import 'product_detail.dart'; 
+import 'cart.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -47,13 +49,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   late int _currentIndex;
   final GlobalKey<FavoritesScreenState> _favoritesKey = GlobalKey<FavoritesScreenState>();
+  final GlobalKey<CartScreenState> _cartKey = GlobalKey<CartScreenState>();
 
-  // Мәзір атауларын өзгерттік
   static const _titles = <String>[
-    'Басты',
-    'Іздеу',
-    'Ұнайды',
-    'Парақша',
+    '\u0411\u0430\u0441\u0442\u044B',
+    '\u0406\u0437\u0434\u0435\u0443',
+    '\u04B0\u043D\u0430\u0439\u0434\u044B',
+    '\u0421\u0435\u0431\u0435\u0442',
+    '\u041F\u0430\u0440\u0430\u049B\u0448\u0430',
   ];
 
   late final List<Widget> _tabs;
@@ -63,7 +66,6 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _currentIndex = widget.startIndex;
 
-    // Беттер тізімін жаңарттық
     _tabs = <Widget>[
       _HomeTab(userId: widget.userId),
       SearchScreen(
@@ -72,11 +74,12 @@ class _HomeScreenState extends State<HomeScreen> {
         initialQuery: widget.initialSearchQuery,
       ),
       FavoritesScreen(key: _favoritesKey, userId: widget.userId),
+      CartScreen(key: _cartKey, userId: widget.userId),
       ProfileScreen(userId: widget.userId),
     ];
   }
 
-  // Навигация логикасы (өзгеріссіз қалады, бірақ индекс енді жаңа бетке сілтейді)
+  // РќР°РІРёРіР°С†РёСЏ Р»РѕРіРёРєР°СЃС‹ (У©Р·РіРµСЂС–СЃСЃС–Р· Т›Р°Р»Р°РґС‹, Р±С–СЂР°Т› РёРЅРґРµРєСЃ РµРЅРґС– Р¶Р°ТЈР° Р±РµС‚РєРµ СЃС–Р»С‚РµР№РґС–)
   void _onTap(int index) {
     if (_currentIndex == index) return;
     setState(() {
@@ -84,6 +87,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
     if (index == 2) {
       _favoritesKey.currentState?.refreshFavorites();
+    }
+    if (index == 3) {
+      _cartKey.currentState?.fetchCart();
     }
   }
 
@@ -108,10 +114,11 @@ class _HomeScreenState extends State<HomeScreen> {
         selectedItemColor: Colors.orange.shade800,
         unselectedItemColor: Colors.grey,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Басты'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Іздеу'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: 'Ұнайды'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Парақша'),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: '\u0411\u0430\u0441\u0442\u044B'),
+          BottomNavigationBarItem(icon: Icon(Icons.search), label: '\u0406\u0437\u0434\u0435\u0443'),
+          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: '\u04B0\u043D\u0430\u0439\u0434\u044B'),
+          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '\u0421\u0435\u0431\u0435\u0442'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: '\u041F\u0430\u0440\u0430\u049B\u0448\u0430'),
         ],
       ),
     );
@@ -123,11 +130,16 @@ class _HomeTab extends StatelessWidget {
   const _HomeTab({super.key, required this.userId});
 
   static const List<Map<String, String>> categories = [
-    {'title': 'Бірінші тағамдар', 'path': 'assets/images/soup.jpg'},
-    {'title': 'Екінші тағамдар', 'path': 'assets/images/manty.jpg'},
-    {'title': 'Десерттер', 'path': 'assets/images/dessert.jpg'},
-    {'title': 'Салаттар', 'path': 'assets/images/shrimp_pasta.jpg'},
-    {'title': 'Ұлттық', 'path': 'assets/images/national.jpg'},
+    {'title': 'Барлық санаттар', 'path': 'assets/images/soup.jpg'},
+    {'title': 'Таң ертеңгілік', 'path': 'assets/images/baursak.jpg'},
+    {'title': 'Түскі ас', 'path': 'assets/images/manty.jpg'},
+    {'title': 'Кешкі ас', 'path': 'assets/images/kuirdak.jpg'},
+    {'title': 'Тәттілер', 'path': 'assets/images/dessert.jpg'},
+    {'title': 'Тағамдар', 'path': 'assets/images/shrimp_pasta.jpg'},
+    {'title': 'Алғашқы тағам', 'path': 'assets/images/borsh.jpg'},
+    {'title': 'Гарнир', 'path': 'assets/images/pasta.jpg'},
+    {'title': 'Сусындар', 'path': 'assets/images/ceremony.jpg'},
+    {'title': 'Басқа', 'path': 'assets/images/national.jpg'},
   ];
 
   @override
@@ -142,7 +154,7 @@ class _HomeTab extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               image: const DecorationImage(
-                image: AssetImage('assets/images/dessert.jpg'),
+                image: AssetImage('assets/images/soup.jpg'),
                 fit: BoxFit.cover,
               ),
               boxShadow: [
@@ -174,12 +186,12 @@ class _HomeTab extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'Қош келдіңіз!',
+                          '\u049A\u043E\u0448 \u043A\u0435\u043B\u0434\u0456\u04A3\u0456\u0437!',
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
                         SizedBox(height: 6),
                         Text(
-                          'Бүгін қандай рецепт дайындаймыз?',
+                          '\u0411\u04AF\u0433\u0456\u043D \u043D\u0435 \u0456\u0437\u0434\u0435\u0439\u043C\u0456\u0437?',
                           style: TextStyle(color: Colors.white70),
                         ),
                       ],
@@ -197,23 +209,23 @@ class _HomeTab extends StatelessWidget {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.orange.shade700,
                     ),
-                    child: const Text('Іздеу'),
+                    child: const Text('\u0406\u0437\u0434\u0435\u0443'),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 20),
-          const _Title('Танымал санаттар'),
+          const _Title('\u0422\u0430\u043D\u044B\u043C\u0430\u043B \u0441\u0430\u043D\u0430\u0442\u0442\u0430\u0440'),
           const SizedBox(height: 12),
-          // САНАТТАРДЫ ЖӨНДЕУ:
+          // РЎРђРќРђРўРўРђР Р”Р« Р–УЁРќР”Р•РЈ:
           SizedBox(
-            height: 130, // Биіктігін үлкейтіп, overflow болдырмау
+            height: 130, // Р‘РёС–РєС‚С–РіС–РЅ ТЇР»РєРµР№С‚С–Рї, overflow Р±РѕР»РґС‹СЂРјР°Сѓ
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
               itemBuilder: (context, index) {
-                final category = categories[index]; // 'products' емес, 'categories'
+                final category = categories[index]; // 'products' РµРјРµСЃ, 'categories'
                 return _HorizontalCategory(
                   title: category['title'] ?? '',
                   assetPath: category['path'] ?? 'assets/images/soup.jpg',
@@ -231,7 +243,7 @@ class _HomeTab extends StatelessWidget {
           ),
           
           const SizedBox(height: 24),
-          const _Title('Жаңа ұсыныстар'),
+          const _Title('\u0421\u0456\u0437\u0433\u0435 \u0430\u0440\u043D\u0430\u043B\u0493\u0430\u043D'),
           const SizedBox(height: 12),
           _RecommendedDishes(userId: userId),
           const SizedBox(height: 24),
@@ -301,31 +313,47 @@ class _RecommendedDishes extends StatefulWidget {
 
 class _RecommendedDishesState extends State<_RecommendedDishes> {
   Set<String> _favoriteIds = {};
+  List<dynamic> _products = [];
+  bool _isLoading = true;
+  bool _hasError = false;
 
   @override
   void initState() {
     super.initState();
     _loadFavorites();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    setState(() { _isLoading = true; _hasError = false; });
+    try {
+      final prods = await ApiService.getRecommendedProducts(widget.userId);
+      if (mounted) setState(() { _products = prods; _isLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() { _hasError = true; _isLoading = false; });
+    }
   }
 
   Future<void> _loadFavorites() async {
     if (widget.userId == 'guest') return;
     try {
       final favs = await ApiService.getFavorites(widget.userId);
-      setState(() {
-        _favoriteIds = favs
-            .map((item) => item['_id']?.toString())
-            .where((id) => id != null)
-            .cast<String>()
-            .toSet();
-      });
+      if (mounted) {
+        setState(() {
+          _favoriteIds = favs
+              .map((item) => item['_id']?.toString())
+              .where((id) => id != null)
+              .cast<String>()
+              .toSet();
+        });
+      }
     } catch (_) {}
   }
 
   Future<void> _toggleFavorite(BuildContext context, Map<String, dynamic> product) async {
     if (widget.userId == 'guest') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Таңдаулыға қосу үшін кіріңіз.')),
+        const SnackBar(content: Text('РўР°ТЈРґР°СѓР»С‹Т“Р° Т›РѕСЃСѓ ТЇС€С–РЅ РєС–СЂС–ТЈС–Р·.')),
       );
       return;
     }
@@ -334,22 +362,22 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
     try {
       final result = await ApiService.toggleFavorite(widget.userId, productId);
       final isLiked = result['isLiked'] == true;
-      setState(() {
-        if (isLiked) {
-          _favoriteIds.add(productId);
-        } else {
-          _favoriteIds.remove(productId);
-        }
-      });
+      // Only update favorites set вЂ” do NOT reload the product list
+      if (mounted) {
+        setState(() {
+          if (isLiked) { _favoriteIds.add(productId); }
+          else { _favoriteIds.remove(productId); }
+        });
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'Сақталды')),
+          SnackBar(content: Text(result['message'] ?? 'РЎР°Т›С‚Р°Р»РґС‹')),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Қате: $e')),
+          SnackBar(content: Text('ТљР°С‚Рµ: $e')),
         );
       }
     }
@@ -357,32 +385,34 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: ApiService.getProducts(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        } else if (snapshot.hasError) {
-          return Center(child: Text('Қате: ${snapshot.error}')); 
-        } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return const Center(child: Text('Рецепттер табылмады.')); 
-        }
+    if (_isLoading) return const Center(child: CircularProgressIndicator());
+    if (_hasError) return Center(
+      child: Column(
+        children: [
+          const Text('Р–ТЇРєС‚РµСѓ Т›Р°С‚РµСЃС–.'),
+          TextButton(onPressed: _loadProducts, child: const Text('ТљР°Р№С‚Р° РєУ©СЂСѓ')),
+        ],
+      ),
+    );
+    if (_products.isEmpty) return const Center(child: Text('РўР°СѓР°СЂР»Р°СЂ С‚Р°Р±С‹Р»РјР°РґС‹.'));
 
-        final products = snapshot.data!;
-
-        return Column(
-          children: products.map((product) {
-            final productId = product['_id']?.toString();
-            final isLiked = productId != null && _favoriteIds.contains(productId);
-            return _ProductCard(
-              product: product,
-              userId: widget.userId,
-              isFavorite: isLiked,
-              onFavoritePressed: () => _toggleFavorite(context, product),
-            );
-          }).toList(),
-        );
+    return RefreshIndicator(
+      onRefresh: () async {
+        await _loadProducts();
+        await _loadFavorites();
       },
+      child: Column(
+        children: _products.map((product) {
+          final productId = product['_id']?.toString();
+          final isLiked = productId != null && _favoriteIds.contains(productId);
+          return _ProductCard(
+            product: product,
+            userId: widget.userId,
+            isFavorite: isLiked,
+            onFavoritePressed: () => _toggleFavorite(context, product),
+          );
+        }).toList(),
+      ),
     );
   }
 }
@@ -426,101 +456,159 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Деректерді объектіден суырып аламыз
-    final title = product['title'] ?? 'Тақырыпсыз';
+    final title = product['title'] ?? 'РўР°Т›С‹СЂС‹РїСЃС‹Р·';
     final imageUrl = product['imageUrl'] ?? 'assets/images/soup.jpg';
-    final description = product['description'] ?? '';
-    final category = product['category'] ?? '';
+    final price = product['price'] ?? 0;
+    final sellerName = product['sellerName']?.toString().isNotEmpty == true
+        ? product['sellerName'].toString()
+        : (product['sellerId']?.toString() ?? 'РЎР°С‚СѓС€С‹');
+    final sellerLogo = product['sellerLogo']?.toString() ?? '';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      clipBehavior: Clip.antiAlias, // Сурет жиегі дөңгелек болуы үшін
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    // РђРІР°С‚Р°СЂ С€РµТЈР±РµСЂС–
+    Widget logoWidget;
+    if (sellerLogo.startsWith('http')) {
+      logoWidget = ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Image.network(sellerLogo, width: 36, height: 36, fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => _initials(sellerName)),
+      );
+    } else {
+      logoWidget = _initials(sellerName);
+    }
+
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(product: product, userId: userId),
+      )),
+      child: Card(
+        margin: const EdgeInsets.only(bottom: 16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Stack(
             children: [
-              // Егер URL болса Image.network, егер жол болса Image.asset
               imageUrl.startsWith('http') 
-                ? Image.network(imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover)
-                : Image.asset(imageUrl, height: 180, width: double.infinity, fit: BoxFit.cover),
-              Positioned(
-                top: 10, right: 10,
-                child: CircleAvatar(
-                  backgroundColor: Colors.white,
-                  child: IconButton(
-                    icon: Icon(
-                      isFavorite ? Icons.favorite : Icons.favorite_border,
-                      color: Colors.red,
+                ? CachedNetworkImage(
+                    imageUrl: imageUrl, 
+                    height: 180, 
+                    width: double.infinity, 
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      height: 180,
+                      color: Colors.grey.shade200,
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
-                    onPressed: onFavoritePressed,
-                  ),
-                ),
-              ),
+                    errorWidget: (context, url, error) => Container(
+                      height: 180,
+                      color: Colors.grey.shade300,
+                      child: const Icon(Icons.error),
+                    ),
+                  )
+                : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), height: 180, width: double.infinity, fit: BoxFit.cover),
             ],
           ),
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                if (category.toString().isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        category.toString(),
-                        style: TextStyle(
-                          color: Colors.orange.shade800,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                const SizedBox(height: 8),
-                Text(
-                  description.toString(),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Colors.grey.shade700),
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      // РЕЦЕПТ БЕТІНЕ ӨТУ
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => RecipeDetailScreen(
-                            product: product,
-                            userId: userId,
+            // РўР°СѓР°СЂ Р°С‚С‹ + РєР°С‚РµРіРѕСЂРёСЏ
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+              child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+            ),
+            // РўУ©РјРµРЅРіС– Р±У©Р»С–РјС–: Р»РѕРіРѕ СЃРѕР»РґР°, РєРЅРѕРїРєР°Р»Р°СЂ + Р±Р°Т“Р° РѕТЈРґР°
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // РЎРѕР»: Р»РѕРіРѕ + Р±СЂРµРЅРґ Р°С‚С‹
+                  Expanded(
+                    child: Row(
+                      children: [
+                        logoWidget,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            sellerName,
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 2,
                           ),
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.menu_book),
-                    label: const Text("Рецептті көру"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
-                      foregroundColor: Colors.white,
+                      ],
                     ),
                   ),
-                )
-              ],
+                  // РћТЈ: РєРЅРѕРїРєР°Р»Р°СЂ Р¶У™РЅРµ Р±Р°Т“Р°
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        children: [
+                          // Р›Р°Р№РєРєРЅРѕРїРєР°СЃС‹
+                          SizedBox(
+                            width: 36, height: 36,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              icon: Icon(
+                                isFavorite ? Icons.favorite : Icons.favorite_border,
+                                color: Colors.red, size: 22,
+                              ),
+                              onPressed: onFavoritePressed,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          // РљРµСЂС–РєРЅРѕРїРєР°СЃС‹
+                          SizedBox(
+                            width: 36, height: 36,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              icon: const Icon(Icons.add_shopping_cart, color: Colors.orange, size: 22),
+                              onPressed: () async {
+                                if (userId == 'guest') {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('РЎРµР±РµС‚РєРµ Т›РѕСЃСѓ ТЇС€С–РЅ РєС–СЂС–ТЈС–Р·.')));
+                                  return;
+                                }
+                                try {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('РЎРµР±РµС‚РєРµ Т›РѕСЃС‹Р»СѓРґР°...'), duration: Duration(milliseconds: 500)));
+                                  await ApiService.addToCart(userId, product['_id']);
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('РЎРµР±РµС‚РєРµ Т›РѕСЃС‹Р»РґС‹!')));
+                                } catch (e) {
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ТљР°С‚Рµ: $e')));
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      // Р‘Р°Т“Р°
+                      Text(
+                        '$price \u20B8',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  Widget _initials(String name) {
+    final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    return Container(
+      width: 36, height: 36,
+      decoration: BoxDecoration(
+        color: Colors.orange.shade700,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      alignment: Alignment.center,
+      child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+    );
+  }
 }
+
+
+

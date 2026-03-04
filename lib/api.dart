@@ -24,6 +24,36 @@ class ApiService {
     }
   }
 
+  // --- Қарапайым пайдаланушылар үшін тауар қосу ---
+  static Future<Map<String, dynamic>> addProduct(Map<String, dynamic> product) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/products/add'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode(product),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 201 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Тауар қосу қатесі.');
+    }
+  }
+
+  // --- ИИ көмегімен іздеу ---
+  static Future<Map<String, dynamic>> searchProductsWithAI(String query) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/products/ai-search'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'query': query}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'ИИ іздеу қатесі.');
+    }
+  }
+
   // --- Қолданушы ---
   static Future<Map<String, dynamic>> getUserById(String userId) async {
       final res = await http.get(Uri.parse('$baseUrl/user/$userId')); // ✅ Дұрыс, 'user' қолданылған
@@ -33,6 +63,36 @@ class ApiService {
       } else {
         throw Exception(body['error'] ?? 'Пайдаланушыны жүктеу қатесі.');
       }
+  }
+
+  // --- Жеткізу мекенжайын жаңарту ---
+  static Future<void> updateUserAddress(String userId, String address) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/user/$userId/address'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'deliveryAddress': address}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode != 200 || body['ok'] != true) {
+      throw Exception(body['error'] ?? 'Мекенжайды сақтау қатесі.');
+    }
+  }
+
+  // --- ML Рекомендациялар ---
+  static Future<List<dynamic>> getRecommendedProducts(String userId) async {
+    try {
+      final url = '$baseUrl/products/recommended/$userId';
+      print('Fetching ML recommendations from: $url');
+      final res = await http.get(Uri.parse(url));
+      print('ML API Response Code: \${res.statusCode}');
+      print('ML API Response Body: \${res.body}');
+      if (res.statusCode == 200) {
+        return jsonDecode(res.body);
+      }
+      throw Exception('Жүктеу қатесі (Status \${res.statusCode}): \${res.body}');
+    } catch (e) {
+      throw Exception('Қосылу қатесі: $e');
+    }
   }
 
   // --- Әкімші (Admin) ---
@@ -139,6 +199,71 @@ class ApiService {
       return jsonDecode(res.body);
     } else {
       throw Exception('Таңдаулыларды жүктеу қатесі: ${res.statusCode}');
+    }
+  }
+  // --- Себет (Cart) ---
+  static Future<Map<String, dynamic>> getCart(String userId) async {
+    final res = await http.get(Uri.parse('$baseUrl/cart/$userId'));
+    if (res.statusCode == 200) {
+      return jsonDecode(res.body);
+    } else {
+      throw Exception('Себетті жүктеу қатесі: ${res.statusCode}');
+    }
+  }
+
+  static Future<Map<String, dynamic>> addToCart(String userId, String productId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/cart/add'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'productId': productId}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Себетке қосу қатесі.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateCartQuantity(String userId, String productId, int quantity) async {
+    final res = await http.put(
+      Uri.parse('$baseUrl/cart/update'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'productId': productId, 'quantity': quantity}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Санды өзгерту қатесі.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> removeFromCart(String userId, String productId) async {
+    final res = await http.delete(
+      Uri.parse('$baseUrl/cart/remove'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId, 'productId': productId}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Себеттен жою қатесі.');
+    }
+  }
+
+  static Future<Map<String, dynamic>> checkoutCart(String userId) async {
+    final res = await http.post(
+      Uri.parse('$baseUrl/cart/checkout'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'userId': userId}),
+    );
+    final body = jsonDecode(res.body);
+    if (res.statusCode == 200 && body['ok'] == true) {
+      return body;
+    } else {
+      throw Exception(body['error'] ?? 'Сатып алу қатесі.');
     }
   }
 }

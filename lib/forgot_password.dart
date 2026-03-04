@@ -116,7 +116,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       return;
     }
 
-    // 🚨 Используем вынесенную функцию валидации
+    // Используем вынесенную функцию валидации
     if (!validatePassword(newPassword)) {
       _showSnackBar('Құпия сөз кемінде 8 таңбадан тұруы керек және бір үлкен әріп, бір кіші әріп, бір сан және бір арнайы символ болуы керек.');
       return;

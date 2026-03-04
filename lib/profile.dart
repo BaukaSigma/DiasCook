@@ -2,12 +2,14 @@
 import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import 'login.dart';
+import 'add_product.dart';
 
 Widget _buildInfoCard({
   required BuildContext context,
   required IconData icon,
   required String label,
   required String value,
+  VoidCallback? onEdit,
 }) {
   return Card(
     margin: const EdgeInsets.symmetric(vertical: 8),
@@ -15,21 +17,9 @@ Widget _buildInfoCard({
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     child: ListTile(
       leading: Icon(icon, color: Colors.orange.shade700, size: 28),
-      title: Text(
-        label,
-        style: TextStyle(
-          color: Colors.grey.shade600,
-          fontSize: 14,
-        ),
-      ),
-      subtitle: Text(
-        value,
-        style: const TextStyle(
-          fontSize: 17,
-          fontWeight: FontWeight.bold,
-          color: Colors.black87,
-        ),
-      ),
+      title: Text(label, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+      subtitle: Text(value, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Colors.black87)),
+      trailing: onEdit != null ? IconButton(icon: const Icon(Icons.edit, size: 20, color: Colors.orange), onPressed: onEdit) : null,
     ),
   );
 }
@@ -135,8 +125,82 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
                 label: 'Телефон нөмірі',
                 value: user['phone'] ?? 'N/A',
               ),
+
+              _buildInfoCard(
+                context: context,
+                icon: Icons.local_shipping_outlined,
+                label: 'Жеткізу мекенжайы',
+                value: user['deliveryAddress'] != null && user['deliveryAddress'].toString().isNotEmpty
+                    ? user['deliveryAddress'].toString()
+                    : 'Көрсетілмеген',
+                onEdit: () async {
+                  final ctrl = TextEditingController(text: user['deliveryAddress'] ?? '');
+                  final newAddr = await showDialog<String>(
+                    context: context,
+                    builder: (_) => AlertDialog(
+                      title: const Text('Жеткізу мекенжайы'),
+                      content: TextField(
+                        controller: ctrl,
+                        decoration: const InputDecoration(
+                          hintText: 'Мыс. Алматы, Абай көшесі, 5',
+                          border: OutlineInputBorder(),
+                        ),
+                        maxLines: 2,
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Болдырмау')),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                          onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+                          child: const Text('Сақтау', style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (newAddr != null && newAddr.isNotEmpty && context.mounted) {
+                    try {
+                      await ApiService.updateUserAddress(user['userId'], newAddr);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Мекенжай сақталды!')),
+                      );
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Қате: $e')),
+                        );
+                      }
+                    }
+                  }
+                },
+              ),
               
               const SizedBox(height: 32),
+              
+              // Кнопка добавления товара
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    // Тауар қосу бетіне өту
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => AddProductScreen(userId: user['userId'])),
+                    );
+                  },
+                  icon: const Icon(Icons.add_business),
+                  label: const Text('Тауар қосу'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               
               // Кнопка выхода
               SizedBox(
