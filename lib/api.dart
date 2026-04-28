@@ -56,9 +56,9 @@ class ApiService {
 
   // --- Қолданушы ---
   static Future<Map<String, dynamic>> getUserById(String userId) async {
-      final res = await http.get(Uri.parse('$baseUrl/user/$userId')); // ✅ Дұрыс, 'user' қолданылған
+      final res = await http.get(Uri.parse('$baseUrl/user/$userId'));
       final body = jsonDecode(res.body);
-      if (res.statusCode == 200 && body['ok'] == true) { // 👈 Бұл жерде 'ok: true' тексеруі дұрыс
+      if (res.statusCode == 200 && body['ok'] == true) {
         return body; 
       } else {
         throw Exception(body['error'] ?? 'Пайдаланушыны жүктеу қатесі.');
@@ -82,14 +82,11 @@ class ApiService {
   static Future<List<dynamic>> getRecommendedProducts(String userId) async {
     try {
       final url = '$baseUrl/products/recommended/$userId';
-      print('Fetching ML recommendations from: $url');
       final res = await http.get(Uri.parse(url));
-      print('ML API Response Code: \${res.statusCode}');
-      print('ML API Response Body: \${res.body}');
       if (res.statusCode == 200) {
         return jsonDecode(res.body);
       }
-      throw Exception('Жүктеу қатесі (Status \${res.statusCode}): \${res.body}');
+      throw Exception('Жүктеу қатесі (Status ${res.statusCode}): ${res.body}');
     } catch (e) {
       throw Exception('Қосылу қатесі: $e');
     }
@@ -201,6 +198,7 @@ class ApiService {
       throw Exception('Таңдаулыларды жүктеу қатесі: ${res.statusCode}');
     }
   }
+  
   // --- Себет (Cart) ---
   static Future<Map<String, dynamic>> getCart(String userId) async {
     final res = await http.get(Uri.parse('$baseUrl/cart/$userId'));

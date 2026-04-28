@@ -1,5 +1,7 @@
 import 'package:first/login.dart';
+import 'package:first/home.dart';
 import 'package:flutter/material.dart';
+import 'localization.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -34,9 +36,9 @@ class _SplashScreenState extends State<SplashScreen> {
               gaplessPlayback: true,
             ),
             const SizedBox(height: 16),
-            const Text(
-              '\u0416\u04AF\u043A\u0442\u0435\u043B\u0443\u0434\u0435...',
-              style: TextStyle(fontSize: 16),
+            Text(
+              Loc.tr('loading'),
+              style: const TextStyle(fontSize: 16),
             ),
           ],
         ),

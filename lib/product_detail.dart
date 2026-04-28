@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
+import 'seller_profile.dart';
+import 'localization.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -229,31 +231,74 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String title = widget.product['title'] ?? 'Тақырыпсыз';
+    final String lang = Loc.lang.value;
+    
+    // Выбор заголовка
+    String title = '';
+    if (lang == 'kz') {
+      title = (widget.product['titleKz'] ?? '').toString();
+    } else if (lang == 'ru') {
+      title = (widget.product['titleRu'] ?? '').toString();
+    }
+    if (title.trim().isEmpty) {
+      title = (widget.product['title'] ?? 'Тақырыпсыз').toString();
+    }
+    
     final String imageUrl = widget.product['imageUrl'] ?? 'assets/images/soup.jpg';
-    final String ruDescription = (widget.product['descriptionRu'] ?? '').toString();
-    final String enDescription = (widget.product['description'] ?? '').toString();
-    final String descriptionSource = ruDescription.trim().isNotEmpty ? ruDescription : enDescription;
-    final String description = descriptionSource.trim().isEmpty ? '\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u043e\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442.' : descriptionSource;
+    
+    // Логика выбора описания
+    String description = '';
+    if (lang == 'kz') {
+      description = (widget.product['descriptionKz'] ?? '').toString();
+    } else if (lang == 'ru') {
+      description = (widget.product['descriptionRu'] ?? '').toString();
+    }
+    if (description.trim().isEmpty) {
+      description = (widget.product['description'] ?? '').toString();
+    }
+    if (description.trim().isEmpty) {
+      description = Loc.tr('not_specified');
+    }
+
     final price = widget.product['price'] ?? 0;
-    final String condition = widget.product['condition'] ?? 'Көрсетілмеген';
-    final String location = widget.product['location'] ?? 'Көрсетілмеген';
-    final String sellerName = widget.product['sellerName'] ?? widget.product['sellerId'] ?? 'Сатушы';
+    final String condition = widget.product['condition'] ?? Loc.tr('not_specified');
+    final String location = widget.product['location'] ?? Loc.tr('not_specified');
+    final String sellerName = widget.product['sellerName'] ?? widget.product['sellerId'] ?? Loc.tr('seller_label');
     final String sellerLogo = widget.product['sellerLogo'] ?? '';
 
-    const ingredientsPrefix = '\u0421\u043e\u0441\u0442\u0430\u0432:';
-    const stepsPrefix = '\u041f\u0440\u0438\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u0438\u0435:';
-    var ingredients = _preferList(widget.product['ingredientsRu'], widget.product['ingredients']);
-    var steps = _preferList(widget.product['stepsRu'], widget.product['steps']);
+    // Логика выбора состава и шагов
+    List<String> ingredients = [];
+    List<String> steps = [];
+
+    if (lang == 'kz') {
+      ingredients = _normalizeList(widget.product['ingredientsKz']);
+      steps = _normalizeList(widget.product['stepsKz']);
+    } else if (lang == 'ru') {
+      ingredients = _normalizeList(widget.product['ingredientsRu']);
+      steps = _normalizeList(widget.product['stepsRu']);
+    }
+
+    if (ingredients.isEmpty) {
+      ingredients = _normalizeList(widget.product['ingredients']);
+    }
+    if (steps.isEmpty) {
+      steps = _normalizeList(widget.product['steps']);
+    }
+
+    // Парсинг из описания (если поля пустые)
+    const ingredientsPrefixRu = 'Состав:';
+    const stepsPrefixRu = 'Приготовление:';
+    
+    if (ingredients.isEmpty) {
+      final line = _findLine(description, ingredientsPrefixRu);
+      if (line != null) ingredients = _parseCommaList(line, ingredientsPrefixRu);
+    }
+    if (steps.isEmpty) {
+      final line = _findLine(description, stepsPrefixRu);
+      if (line != null) steps = _parseStepsLine(line, stepsPrefixRu);
+    }
+
     final metaParts = _extractMetaParts(description);
-    final ingredientsLine = _findLine(description, ingredientsPrefix);
-    if (ingredients.isEmpty && ingredientsLine != null) {
-      ingredients = _parseCommaList(ingredientsLine, ingredientsPrefix);
-    }
-    final stepsLine = _findLine(description, stepsPrefix);
-    if (steps.isEmpty && stepsLine != null) {
-      steps = _parseStepsLine(stepsLine, stepsPrefix);
-    }
     final hasStructured = ingredients.isNotEmpty || steps.isNotEmpty || metaParts.isNotEmpty;
 
     final Widget productImage = imageUrl.startsWith('http')
@@ -327,11 +372,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Row(
+                   Row(
                     children: [
                       const Icon(Icons.location_on, color: Colors.grey, size: 20),
                       const SizedBox(width: 8),
-                      Text('Қала: $location', style: const TextStyle(fontSize: 16, color: Colors.black87)),
+                      Text('${Loc.tr('location_label')}: $location', style: const TextStyle(fontSize: 16, color: Colors.black87)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -339,48 +384,61 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     children: [
                       const Icon(Icons.info_outline, color: Colors.grey, size: 20),
                       const SizedBox(width: 8),
-                      Text('Күйі: $condition', style: const TextStyle(fontSize: 16, color: Colors.black87)),
+                      Text('${Loc.tr('condition_label')}: $condition', style: const TextStyle(fontSize: 16, color: Colors.black87)),
                     ],
                   ),
 
                   const SizedBox(height: 12),
                   // Сатушы блогі
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade300),
-                    ),
-                    child: Row(
-                      children: [
-                        // Logo or initials
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: sellerLogo.startsWith('http')
-                              ? Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _sellerInitials(sellerName))
-                              : _sellerInitials(sellerName),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Сатушы', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              Text(sellerName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                            ],
+                  InkWell(
+                    onTap: () {
+                      Navigator.push(context, MaterialPageRoute(
+                        builder: (_) => SellerProfileScreen(
+                          sellerId: widget.product['sellerId'] ?? '',
+                          sellerName: sellerName,
+                          sellerLogo: sellerLogo,
+                          userId: widget.userId,
+                          address: location,
+                        )
+                      ));
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Row(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(24),
+                            child: sellerLogo.startsWith('http')
+                                ? Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => _sellerInitials(sellerName))
+                                : _sellerInitials(sellerName),
                           ),
-                        ),
-                        Icon(Icons.chevron_right, color: Colors.grey.shade400),
-                      ],
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(Loc.tr('seller_label'), style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                                Text(sellerName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, color: Colors.grey.shade400),
+                        ],
+                      ),
                     ),
                   ),
 
                   const Divider(height: 32),
 
                   Text(
-                    '\u041e\u043f\u0438\u0441\u0430\u043d\u0438\u0435 \u0431\u043b\u044e\u0434\u0430',
+                    Loc.tr('description_label'),
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 12),
@@ -389,7 +447,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     if (ingredients.isNotEmpty)
                       _sectionCard(
                         icon: Icons.receipt_long,
-                        title: '\u0421\u043e\u0441\u0442\u0430\u0432',
+                        title: Loc.tr('ingredients_label'),
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -399,7 +457,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     if (metaParts.isNotEmpty)
                       _sectionCard(
                         icon: Icons.info_outline,
-                        title: '\u0414\u0435\u0442\u0430\u043b\u0438',
+                        title: Loc.tr('details_label'),
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
@@ -409,7 +467,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     if (steps.isNotEmpty)
                       _sectionCard(
                         icon: Icons.restaurant_menu,
-                        title: '\u041f\u0440\u0438\u0433\u043e\u0442\u043e\u0432\u043b\u0435\u043d\u0438\u0435',
+                        title: Loc.tr('steps_label'),
                         child: Column(
                           children: [
                             for (int i = 0; i < steps.length; i++) _stepRow(i + 1, steps[i]),
@@ -429,24 +487,24 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         if (widget.userId == 'guest') {
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Себетке қосу үшін кіріңіз.')));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('login_to_add'))));
                           return;
                         }
                         try {
                           // ignore: use_build_context_synchronously
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Себетке қосылуда...'), duration: Duration(milliseconds: 500)));
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('adding_to_cart')), duration: const Duration(milliseconds: 500)));
                           await ApiService.addToCart(widget.userId, widget.product['_id']);
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Себетке қосылды!')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('added_to_cart'))));
                           }
                         } catch (e) {
                           if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Қате: $e')));
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
                           }
                         }
                       },
                       icon: const Icon(Icons.add_shopping_cart),
-                      label: const Text('Себетке қосу', style: TextStyle(fontSize: 18)),
+                      label: Text(Loc.tr('add_to_cart'), style: const TextStyle(fontSize: 18)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green.shade600,
                         foregroundColor: Colors.white,
@@ -461,11 +519,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Байланыс орталығы ашылуда...')),
+                          SnackBar(content: Text(Loc.tr('loading'))),
                         );
                       },
                       icon: const Icon(Icons.chat),
-                      label: const Text('Сатушымен байланысу', style: TextStyle(fontSize: 18)),
+                      label: Text(Loc.tr('contact_seller'), style: const TextStyle(fontSize: 18)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.orange.shade700,
                         foregroundColor: Colors.white,

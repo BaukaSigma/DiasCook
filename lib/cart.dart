@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'login.dart';
 import 'product_detail.dart';
+import 'localization.dart';
 
 class CartScreen extends StatefulWidget {
   final String userId;
@@ -80,19 +81,83 @@ class CartScreenState extends State<CartScreen> {
 
   Future<void> _checkout() async {
     if (_cartItems.isEmpty) return;
+
+    final String? method = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(Loc.tr('payment_method')),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.money, color: Colors.green),
+              title: Text(Loc.tr('cash')),
+              onTap: () => Navigator.pop(context, 'cash'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.credit_card, color: Colors.blue),
+              title: Text(Loc.tr('card')),
+              onTap: () => Navigator.pop(context, 'card'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (method == null) return;
+
+    if (method == 'card') {
+      final bool? cardSuccess = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(Loc.tr('card')),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                decoration: InputDecoration(labelText: Loc.tr('card_number')),
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(child: TextField(decoration: InputDecoration(labelText: Loc.tr('expiry')))),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(decoration: InputDecoration(labelText: Loc.tr('cvv')), obscureText: true)),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(Loc.tr('cancel')),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(Loc.tr('checkout_button')),
+            ),
+          ],
+        ),
+      );
+
+      if (cardSuccess != true) return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      final res = await ApiService.checkoutCart(widget.userId);
+      await ApiService.checkoutCart(widget.userId);
       if (mounted) {
+        final msg = method == 'cash' ? Loc.tr('cash_payment_msg') : Loc.tr('success_payment');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(res['message'] ?? 'Тапсырыс сәтті рәсімделді!')),
+          SnackBar(content: Text(msg)),
         );
       }
       fetchCart();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Сатып алу қатесі: $e')),
+          SnackBar(content: Text('${Loc.tr('error')}: $e')),
         );
       }
     } finally {
@@ -127,11 +192,12 @@ class CartScreenState extends State<CartScreen> {
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final item = _cartItems[index];
-                final String productId = item['productId'] ?? '';
-                final String title = item['title'] ?? 'Тақырыпсыз';
-                final String imageUrl = item['imageUrl'] ?? 'assets/images/soup.jpg';
+                final dynamic productData = item['productId'];
+                final String productId = (productData is Map) ? (productData['_id'] ?? '') : (productData ?? '');
+                final String title = (productData is Map) ? (productData['title'] ?? 'Тақырыпсыз') : (item['title'] ?? 'Тақырыпсыз');
+                final String imageUrl = (productData is Map) ? (productData['imageUrl'] ?? 'assets/images/soup.jpg') : (item['imageUrl'] ?? 'assets/images/soup.jpg');
                 final int quantity = item['quantity'] ?? 1;
-                final double price = (item['price'] ?? 0).toDouble();
+                final double price = (productData is Map) ? (productData['price'] ?? 0).toDouble() : (item['price'] ?? 0).toDouble();
 
                 return Card(
                   elevation: 2,
@@ -168,7 +234,7 @@ class CartScreenState extends State<CartScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(item['title'] ?? 'Атауы жоқ',
+                              Text(title,
                                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                   maxLines: 2,
                                   overflow: TextOverflow.ellipsis),
@@ -254,7 +320,7 @@ class CartScreenState extends State<CartScreen> {
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text('Оплатить (Сатып алу)', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        : Text(Loc.tr('checkout_button'), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -288,7 +354,7 @@ class CartScreenState extends State<CartScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 15),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Кіру'),
+              child: Text(Loc.tr('login')),
             ),
           ],
         ),
@@ -302,15 +368,15 @@ class _EmptyCartState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24.0),
+        padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('Себетте ештеңе жоқ', style: TextStyle(fontSize: 18, color: Colors.grey)),
+            const Icon(Icons.shopping_cart_outlined, size: 80, color: Colors.grey),
+            const SizedBox(height: 16),
+            Text(Loc.tr('empty'), style: const TextStyle(fontSize: 18, color: Colors.grey)),
           ],
         ),
       ),

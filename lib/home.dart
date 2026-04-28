@@ -1,4 +1,4 @@
-﻿// home.dart
+// home.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart'; 
@@ -7,6 +7,7 @@ import 'search.dart';
 import 'favorites.dart';
 import 'product_detail.dart'; 
 import 'cart.dart';
+import 'localization.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -51,12 +52,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<FavoritesScreenState> _favoritesKey = GlobalKey<FavoritesScreenState>();
   final GlobalKey<CartScreenState> _cartKey = GlobalKey<CartScreenState>();
 
-  static const _titles = <String>[
-    '\u0411\u0430\u0441\u0442\u044B',
-    '\u0406\u0437\u0434\u0435\u0443',
-    '\u04B0\u043D\u0430\u0439\u0434\u044B',
-    '\u0421\u0435\u0431\u0435\u0442',
-    '\u041F\u0430\u0440\u0430\u049B\u0448\u0430',
+  List<String> get _titles => <String>[
+    Loc.tr('home'),
+    Loc.tr('search'),
+    Loc.tr('favorites'),
+    Loc.tr('cart'),
+    Loc.tr('profile'),
   ];
 
   late final List<Widget> _tabs;
@@ -79,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
-  // РќР°РІРёРіР°С†РёСЏ Р»РѕРіРёРєР°СЃС‹ (У©Р·РіРµСЂС–СЃСЃС–Р· Т›Р°Р»Р°РґС‹, Р±С–СЂР°Т› РёРЅРґРµРєСЃ РµРЅРґС– Р¶Р°ТЈР° Р±РµС‚РєРµ СЃС–Р»С‚РµР№РґС–)
+  // Навигация логикасы (Өзгеріссіз қалады, бірақ индекс енді жаңа бетке сілтейді)
   void _onTap(int index) {
     if (_currentIndex == index) return;
     setState(() {
@@ -113,12 +114,12 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Colors.orange.shade800,
         unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: '\u0411\u0430\u0441\u0442\u044B'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: '\u0406\u0437\u0434\u0435\u0443'),
-          BottomNavigationBarItem(icon: Icon(Icons.favorite), label: '\u04B0\u043D\u0430\u0439\u0434\u044B'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '\u0421\u0435\u0431\u0435\u0442'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: '\u041F\u0430\u0440\u0430\u049B\u0448\u0430'),
+        items: [
+          BottomNavigationBarItem(icon: const Icon(Icons.home), label: Loc.tr('home')),
+          BottomNavigationBarItem(icon: const Icon(Icons.search), label: Loc.tr('search')),
+          BottomNavigationBarItem(icon: const Icon(Icons.favorite), label: Loc.tr('favorites')),
+          BottomNavigationBarItem(icon: const Icon(Icons.shopping_cart), label: Loc.tr('cart')),
+          BottomNavigationBarItem(icon: const Icon(Icons.person), label: Loc.tr('profile')),
         ],
       ),
     );
@@ -129,17 +130,17 @@ class _HomeTab extends StatelessWidget {
   final String userId;
   const _HomeTab({super.key, required this.userId});
 
-  static const List<Map<String, String>> categories = [
-    {'title': 'Барлық санаттар', 'path': 'assets/images/soup.jpg'},
-    {'title': 'Таң ертеңгілік', 'path': 'assets/images/baursak.jpg'},
-    {'title': 'Түскі ас', 'path': 'assets/images/manty.jpg'},
-    {'title': 'Кешкі ас', 'path': 'assets/images/kuirdak.jpg'},
-    {'title': 'Тәттілер', 'path': 'assets/images/dessert.jpg'},
-    {'title': 'Тағамдар', 'path': 'assets/images/shrimp_pasta.jpg'},
-    {'title': 'Алғашқы тағам', 'path': 'assets/images/borsh.jpg'},
-    {'title': 'Гарнир', 'path': 'assets/images/pasta.jpg'},
-    {'title': 'Сусындар', 'path': 'assets/images/ceremony.jpg'},
-    {'title': 'Басқа', 'path': 'assets/images/national.jpg'},
+  List<Map<String, String>> get categories => [
+    {'title': Loc.tr('all_categories'), 'path': 'assets/images/soup.jpg'},
+    {'title': Loc.tr('breakfast'), 'path': 'assets/images/baursak.jpg'},
+    {'title': Loc.tr('lunch'), 'path': 'assets/images/manty.jpg'},
+    {'title': Loc.tr('dinner'), 'path': 'assets/images/kuirdak.jpg'},
+    {'title': Loc.tr('desserts'), 'path': 'assets/images/dessert.jpg'},
+    {'title': Loc.tr('snacks'), 'path': 'assets/images/shrimp_pasta.jpg'},
+    {'title': Loc.tr('appetizer'), 'path': 'assets/images/borsh.jpg'},
+    {'title': Loc.tr('side_dish'), 'path': 'assets/images/pasta.jpg'},
+    {'title': Loc.tr('beverage'), 'path': 'assets/images/ceremony.jpg'},
+    {'title': Loc.tr('other'), 'path': 'assets/images/national.jpg'},
   ];
 
   @override
@@ -180,19 +181,19 @@ class _HomeTab extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          '\u049A\u043E\u0448 \u043A\u0435\u043B\u0434\u0456\u04A3\u0456\u0437!',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                          Loc.tr('welcome_title'),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
                         ),
-                        SizedBox(height: 6),
+                        const SizedBox(height: 6),
                         Text(
-                          '\u0411\u04AF\u0433\u0456\u043D \u043D\u0435 \u0456\u0437\u0434\u0435\u0439\u043C\u0456\u0437?',
-                          style: TextStyle(color: Colors.white70),
+                          Loc.tr('welcome_subtitle'),
+                          style: const TextStyle(color: Colors.white70),
                         ),
                       ],
                     ),
@@ -209,14 +210,14 @@ class _HomeTab extends StatelessWidget {
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.orange.shade700,
                     ),
-                    child: const Text('\u0406\u0437\u0434\u0435\u0443'),
+                    child: Text(Loc.tr('search')),
                   ),
                 ],
               ),
             ),
           ),
           const SizedBox(height: 20),
-          const _Title('\u0422\u0430\u043D\u044B\u043C\u0430\u043B \u0441\u0430\u043D\u0430\u0442\u0442\u0430\u0440'),
+          _Title(Loc.tr('popular_categories')),
           const SizedBox(height: 12),
           // РЎРђРќРђРўРўРђР Р”Р« Р–УЁРќР”Р•РЈ:
           SizedBox(
@@ -243,7 +244,7 @@ class _HomeTab extends StatelessWidget {
           ),
           
           const SizedBox(height: 24),
-          const _Title('\u0421\u0456\u0437\u0433\u0435 \u0430\u0440\u043D\u0430\u043B\u0493\u0430\u043D'),
+          _Title(Loc.tr('for_you')),
           const SizedBox(height: 12),
           _RecommendedDishes(userId: userId),
           const SizedBox(height: 24),
@@ -353,7 +354,7 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
   Future<void> _toggleFavorite(BuildContext context, Map<String, dynamic> product) async {
     if (widget.userId == 'guest') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('РўР°ТЈРґР°СѓР»С‹Т“Р° Т›РѕСЃСѓ ТЇС€С–РЅ РєС–СЂС–ТЈС–Р·.')),
+        SnackBar(content: Text(Loc.tr('must_login'))),
       );
       return;
     }
@@ -371,13 +372,13 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
       }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result['message'] ?? 'РЎР°Т›С‚Р°Р»РґС‹')),
+          SnackBar(content: Text(result['message'] ?? Loc.tr('saved'))),
         );
       }
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ТљР°С‚Рµ: $e')),
+          SnackBar(content: Text('${Loc.tr('error')}: $e')),
         );
       }
     }
@@ -389,12 +390,12 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
     if (_hasError) return Center(
       child: Column(
         children: [
-          const Text('Р–ТЇРєС‚РµСѓ Т›Р°С‚РµСЃС–.'),
-          TextButton(onPressed: _loadProducts, child: const Text('ТљР°Р№С‚Р° РєУ©СЂСѓ')),
+          Text(Loc.tr('error')),
+          TextButton(onPressed: _loadProducts, child: Text(Loc.tr('home'))), // Using home as filler for now or adding retry
         ],
       ),
     );
-    if (_products.isEmpty) return const Center(child: Text('РўР°СѓР°СЂР»Р°СЂ С‚Р°Р±С‹Р»РјР°РґС‹.'));
+    if (_products.isEmpty) return Center(child: Text(Loc.tr('not_found')));
 
     return RefreshIndicator(
       onRefresh: () async {
@@ -456,12 +457,22 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final title = product['title'] ?? 'РўР°Т›С‹СЂС‹РїСЃС‹Р·';
+    final lang = Loc.lang.value;
+    String title = '';
+    if (lang == 'kz') {
+      title = (product['titleKz'] ?? '').toString();
+    } else if (lang == 'ru') {
+      title = (product['titleRu'] ?? '').toString();
+    }
+    if (title.trim().isEmpty) {
+      title = (product['title'] ?? 'Title').toString();
+    }
+
     final imageUrl = product['imageUrl'] ?? 'assets/images/soup.jpg';
     final price = product['price'] ?? 0;
     final sellerName = product['sellerName']?.toString().isNotEmpty == true
         ? product['sellerName'].toString()
-        : (product['sellerId']?.toString() ?? 'РЎР°С‚СѓС€С‹');
+        : (product['sellerId']?.toString() ?? Loc.tr('seller_label'));
     final sellerLogo = product['sellerLogo']?.toString() ?? '';
 
     // РђРІР°С‚Р°СЂ С€РµТЈР±РµСЂС–
@@ -564,15 +575,15 @@ class _ProductCard extends StatelessWidget {
                               icon: const Icon(Icons.add_shopping_cart, color: Colors.orange, size: 22),
                               onPressed: () async {
                                 if (userId == 'guest') {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('РЎРµР±РµС‚РєРµ Т›РѕСЃСѓ ТЇС€С–РЅ РєС–СЂС–ТЈС–Р·.')));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('login_to_add'))));
                                   return;
                                 }
                                 try {
-                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('РЎРµР±РµС‚РєРµ Т›РѕСЃС‹Р»СѓРґР°...'), duration: Duration(milliseconds: 500)));
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('adding_to_cart')), duration: const Duration(milliseconds: 500)));
                                   await ApiService.addToCart(userId, product['_id']);
-                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('РЎРµР±РµС‚РєРµ Т›РѕСЃС‹Р»РґС‹!')));
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('added_to_cart'))));
                                 } catch (e) {
-                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ТљР°С‚Рµ: $e')));
+                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
                                 }
                               },
                             ),

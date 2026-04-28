@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import 'login.dart';
 import 'add_product.dart';
+import 'localization.dart';
 
 Widget _buildInfoCard({
   required BuildContext context,
@@ -24,7 +25,7 @@ Widget _buildInfoCard({
   );
 }
 
-Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
+Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, VoidCallback reloadUser) {
   final fullName = '${user['name'] ?? ''} ${user['surname'] ?? ''}';
   const double appBarHeight = kToolbarHeight; 
 
@@ -51,20 +52,32 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: (appBarHeight - 20) / 2),
-                child: Text(
-                  '',
-                  style: (Theme.of(context).appBarTheme.titleTextStyle ?? 
-                          Theme.of(context).textTheme.titleLarge)
-                      ?.copyWith(
-                            color: Colors.white,
-                          ) ??
-                      const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.white),
+                padding: const EdgeInsets.symmetric(vertical: 0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    DropdownButton<String>(
+                      value: Loc.lang.value,
+                      dropdownColor: Colors.orange.shade800,
+                      iconDisabledColor: Colors.white,
+                      iconEnabledColor: Colors.white,
+                      underline: Container(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          Loc.lang.value = val;
+                        }
+                      },
+                      items: const [
+                        DropdownMenuItem(value: 'kz', child: Text('ҚАЗ', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'ru', child: Text('РУС', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'en', child: Text('ENG', style: TextStyle(color: Colors.white))),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                  ],
                 ),
               ),
+
 
               const CircleAvatar(
                 radius: 50,
@@ -104,7 +117,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
             children: [
               const SizedBox(height: 16),
               Text(
-                'Байланыс ақпараты',
+                Loc.tr('contact_info'),
                 style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -115,30 +128,30 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
               _buildInfoCard(
                 context: context,
                 icon: Icons.email_outlined,
-                label: 'Электрондық пошта',
+                label: Loc.tr('email'),
                 value: user['email'] ?? 'N/A',
               ),
               
               _buildInfoCard(
                 context: context,
                 icon: Icons.phone_android_outlined,
-                label: 'Телефон нөмірі',
+                label: Loc.tr('phone'),
                 value: user['phone'] ?? 'N/A',
               ),
 
               _buildInfoCard(
                 context: context,
                 icon: Icons.local_shipping_outlined,
-                label: 'Жеткізу мекенжайы',
+                label: Loc.tr('delivery_addr'),
                 value: user['deliveryAddress'] != null && user['deliveryAddress'].toString().isNotEmpty
                     ? user['deliveryAddress'].toString()
-                    : 'Көрсетілмеген',
+                    : Loc.tr('not_specified'),
                 onEdit: () async {
                   final ctrl = TextEditingController(text: user['deliveryAddress'] ?? '');
                   final newAddr = await showDialog<String>(
                     context: context,
                     builder: (_) => AlertDialog(
-                      title: const Text('Жеткізу мекенжайы'),
+                      title: Text(Loc.tr('delivery_addr')),
                       content: TextField(
                         controller: ctrl,
                         decoration: const InputDecoration(
@@ -148,11 +161,11 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
                         maxLines: 2,
                       ),
                       actions: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Болдырмау')),
+                        TextButton(onPressed: () => Navigator.pop(context), child: Text(Loc.tr('cancel'))),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
                           onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-                          child: const Text('Сақтау', style: TextStyle(color: Colors.white)),
+                          child: Text(Loc.tr('save'), style: const TextStyle(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -161,8 +174,9 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
                     try {
                       await ApiService.updateUserAddress(user['userId'], newAddr);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Мекенжай сақталды!')),
+                        SnackBar(content: Text(Loc.tr('saved'))),
                       );
+                      reloadUser();
                     } catch (e) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -188,7 +202,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
                     );
                   },
                   icon: const Icon(Icons.add_business),
-                  label: const Text('Тауар қосу'),
+                  label: Text(Loc.tr('add_product')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade600,
                     foregroundColor: Colors.white,
@@ -217,7 +231,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user) {
                     );
                   },
                   icon: const Icon(Icons.logout),
-                  label: const Text('Шығу'),
+                  label: Text(Loc.tr('logout')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.red.shade600,
                     foregroundColor: Colors.white,
@@ -247,13 +261,13 @@ Widget _buildGuestContent(BuildContext context) {
         children: [
           const Icon(Icons.lock_person_outlined, size: 90, color: Colors.deepOrange),
           const SizedBox(height: 20),
-          const Text('Сіз кірмегенсіз (Қонақ)',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
+          Text(Loc.tr('guest'),
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
           const SizedBox(height: 12),
-          const Text(
-            'Парақша деректерін көру үшін кіріңіз немесе тіркеліңіз.',
+          Text(
+            Loc.tr('guest_desc'),
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 16),
+            style: const TextStyle(color: Colors.grey, fontSize: 16),
           ),
           const SizedBox(height: 40),
           SizedBox(
@@ -266,7 +280,7 @@ Widget _buildGuestContent(BuildContext context) {
                 );
               },
               icon: const Icon(Icons.login),
-              label: const Text('Кіру'),
+              label: Text(Loc.tr('login')),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange,
                 foregroundColor: Colors.white,
@@ -285,18 +299,37 @@ Widget _buildGuestContent(BuildContext context) {
 }
 
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   final String userId;
   const ProfileScreen({super.key, required this.userId});
 
   @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  late Future<Map<String, dynamic>> _userFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  void _loadUser() {
+    setState(() {
+      _userFuture = ApiService.getUserById(widget.userId);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (userId == 'guest') {
+    if (widget.userId == 'guest') {
       return _buildGuestContent(context);
     }
     
     return FutureBuilder<Map<String, dynamic>>(
-      future: ApiService.getUserById(userId),
+      future: _userFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -305,24 +338,20 @@ class ProfileScreen extends StatelessWidget {
         if (snapshot.hasError) {
           return Center(
               child: Text(
-                  'Қате: ${snapshot.error}. Бэкендті тексеріңіз.'));
+                  '${Loc.tr('error')}: ${snapshot.error}.'));
         } 
         
-        // snapshot.data тексереміз және 'user' ішкі объектісінің бар-жоғын қараймыз
         if (snapshot.hasData && snapshot.data?['ok'] == true) {
-          // 🎯 ДҰРЫС ШЕШІМ: 'user' кілтіндегі деректерді аламыз
           final Map<String, dynamic>? userData = snapshot.data!['user']; 
           
           if (userData != null) {
-              return _buildProfileContent(context, userData); // ⬅️ Енді дұрыс деректер жіберіледі
+              return _buildProfileContent(context, userData, _loadUser); 
           } else {
-              return const Center(child: Text('Пайдаланушы деректері табылмады (userData null).'));
+              return Center(child: Text(Loc.tr('not_found')));
           }
         } 
         
-        // Жоғарыдағы тексеруден өтпесе
-        return const Center(child: Text('Пайдаланушы деректері табылмады.'));
-
+        return Center(child: Text(Loc.tr('not_found')));
       },
     );
   }

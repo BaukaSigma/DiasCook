@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'splash_screen.dart';
+import 'localization.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,9 +11,13 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: '\u0420\u0435\u0446\u0435\u043f\u0442\u0442\u0435\u0440 \u04d9\u043b\u0435\u043c\u0456',
+    return ValueListenableBuilder<String>(
+      valueListenable: Loc.lang,
+      builder: (context, lang, child) {
+        return MaterialApp(
+          key: ValueKey(lang),
+          debugShowCheckedModeBanner: false,
+          title: Loc.tr('app_title'),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF28C28)),
         useMaterial3: true,
@@ -51,6 +56,8 @@ class MyApp extends StatelessWidget {
         ),
       ),
       home: const SplashScreen(),
+    );
+      },
     );
   }
 }
