@@ -518,8 +518,31 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     height: 50,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(Loc.tr('loading'))),
+                        showDialog(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: Text(Loc.tr('contact_seller')),
+                            content: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 30,
+                                  backgroundImage: sellerLogo.startsWith('http') ? NetworkImage(sellerLogo) : null,
+                                  child: !sellerLogo.startsWith('http') ? Text(sellerName.isNotEmpty ? sellerName[0] : '?') : null,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(sellerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                                const SizedBox(height: 8),
+                                const Text('+7 (701) 123-45-67', style: TextStyle(fontSize: 16, color: Colors.blue)),
+                              ],
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('OK'),
+                              ),
+                            ],
+                          ),
                         );
                       },
                       icon: const Icon(Icons.chat),
