@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
+import 'api.dart';
 import 'home.dart'; 
 import 'login.dart';
 
@@ -74,21 +74,15 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => _loading = true);
 
     try {
-      final res = await http.post(
-        Uri.parse('$_baseUrl/register'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'name': name,
-          'surname': surname,
-          'phone': phone,
-          'email': email,
-          'password': password,
-        }),
-      );
+      final body = await ApiService.register({
+        'name': name,
+        'surname': surname,
+        'phone': phone,
+        'email': email,
+        'password': password,
+      });
 
-      final body = jsonDecode(res.body);
-
-      if (res.statusCode == 201) {
+      if (body['ok'] == true) {
         final userId = body['userId'] ?? 'guest';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Тіркелу сәтті аяқталды!')),

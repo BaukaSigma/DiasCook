@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
+import 'api.dart';
 import 'registration.dart';
 import 'home.dart';
 import 'forgot_password.dart';
@@ -47,15 +47,9 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _loading = true);
 
     try {
-      final res = await http.post(
-        Uri.parse('$_baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+      final body = await ApiService.login(email, password);
 
-      final body = jsonDecode(res.body);
-
-      if (res.statusCode == 200 && body['ok'] == true) { 
+      if (body['ok'] == true) { 
       // ✅ 1. Получаем ID пользователя из ответа
       final loggedInUserId = body['userId']; 
       final isAdmin = body['isAdmin'] == true;
