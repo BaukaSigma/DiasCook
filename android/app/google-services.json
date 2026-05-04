@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "336243629832",
+    "project_id": "diplom-b929a",
+    "storage_bucket": "diplom-b929a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:336243629832:android:bbea54aac3443e482c56bd",
+        "android_client_info": {
+          "package_name": "com.example.first"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLpI5GjJmSRe-qKvGjrSYQIGA37yY77Qs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
