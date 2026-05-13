@@ -1,4 +1,3 @@
-// home.dart
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart'; 
@@ -52,35 +51,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final GlobalKey<FavoritesScreenState> _favoritesKey = GlobalKey<FavoritesScreenState>();
   final GlobalKey<CartScreenState> _cartKey = GlobalKey<CartScreenState>();
 
-  List<String> get _titles => <String>[
-    Loc.tr('home'),
-    Loc.tr('search'),
-    Loc.tr('favorites'),
-    Loc.tr('cart'),
-    Loc.tr('profile'),
-  ];
-
-  late final List<Widget> _tabs;
-
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.startIndex;
-
-    _tabs = <Widget>[
-      _HomeTab(userId: widget.userId),
-      SearchScreen(
-        userId: widget.userId,
-        initialCategory: widget.initialSearchCategory,
-        initialQuery: widget.initialSearchQuery,
-      ),
-      FavoritesScreen(key: _favoritesKey, userId: widget.userId),
-      CartScreen(key: _cartKey, userId: widget.userId),
-      ProfileScreen(userId: widget.userId),
-    ];
   }
 
-  // Навигация логикасы (Өзгеріссіз қалады, бірақ индекс енді жаңа бетке сілтейді)
   void _onTap(int index) {
     if (_currentIndex == index) return;
     setState(() {
@@ -96,32 +72,80 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex], style: const TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.orange.shade700,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-      ),
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _tabs,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _onTap,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.orange.shade800,
-        unselectedItemColor: Colors.grey,
-        items: [
-          BottomNavigationBarItem(icon: const Icon(Icons.home), label: Loc.tr('home')),
-          BottomNavigationBarItem(icon: const Icon(Icons.search), label: Loc.tr('search')),
-          BottomNavigationBarItem(icon: const Icon(Icons.favorite), label: Loc.tr('favorites')),
-          BottomNavigationBarItem(icon: const Icon(Icons.shopping_cart), label: Loc.tr('cart')),
-          BottomNavigationBarItem(icon: const Icon(Icons.person), label: Loc.tr('profile')),
-        ],
-      ),
+    return ValueListenableBuilder<String>(
+      valueListenable: Loc.lang,
+      builder: (context, lang, child) {
+        final List<String> titles = <String>[
+          Loc.tr('home'),
+          Loc.tr('search'),
+          Loc.tr('favorites'),
+          Loc.tr('cart'),
+          Loc.tr('profile'),
+        ];
+
+        final List<Widget> tabs = <Widget>[
+          _HomeTab(userId: widget.userId),
+          SearchScreen(
+            userId: widget.userId,
+            initialCategory: widget.initialSearchCategory,
+            initialQuery: widget.initialSearchQuery,
+          ),
+          FavoritesScreen(key: _favoritesKey, userId: widget.userId),
+          CartScreen(key: _cartKey, userId: widget.userId),
+          ProfileScreen(userId: widget.userId),
+        ];
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(titles[_currentIndex], style: const TextStyle(fontWeight: FontWeight.bold)),
+            backgroundColor: Colors.orange.shade700,
+            foregroundColor: Colors.white,
+            centerTitle: true,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            actions: [
+              ValueListenableBuilder<String>(
+                valueListenable: Loc.lang,
+                builder: (context, currentLang, _) {
+                  return DropdownButton<String>(
+                    value: currentLang,
+                    dropdownColor: Colors.orange.shade800,
+                    iconEnabledColor: Colors.white,
+                    underline: Container(),
+                    onChanged: (val) {
+                      if (val != null) Loc.lang.value = val;
+                    },
+                    items: const [
+                      DropdownMenuItem(value: 'kz', child: Text('ҚАЗ', style: TextStyle(color: Colors.white, fontSize: 13))),
+                      DropdownMenuItem(value: 'ru', child: Text('РУС', style: TextStyle(color: Colors.white, fontSize: 13))),
+                      DropdownMenuItem(value: 'en', child: Text('ENG', style: TextStyle(color: Colors.white, fontSize: 13))),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+            ],
+          ),
+          body: IndexedStack(
+            index: _currentIndex,
+            children: tabs,
+          ),
+          bottomNavigationBar: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _onTap,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: Colors.orange.shade800,
+            unselectedItemColor: Colors.grey,
+            items: [
+              BottomNavigationBarItem(icon: const Icon(Icons.home), label: Loc.tr('home')),
+              BottomNavigationBarItem(icon: const Icon(Icons.search), label: Loc.tr('search')),
+              BottomNavigationBarItem(icon: const Icon(Icons.favorite), label: Loc.tr('favorites')),
+              BottomNavigationBarItem(icon: const Icon(Icons.shopping_cart), label: Loc.tr('cart')),
+              BottomNavigationBarItem(icon: const Icon(Icons.person), label: Loc.tr('profile')),
+            ],
+          ),
+        );
+      },
     );
   }
 }
@@ -219,14 +243,13 @@ class _HomeTab extends StatelessWidget {
           const SizedBox(height: 20),
           _Title(Loc.tr('popular_categories')),
           const SizedBox(height: 12),
-          // РЎРђРќРђРўРўРђР Р”Р« Р–УЁРќР”Р•РЈ:
           SizedBox(
-            height: 130, // Р‘РёС–РєС‚С–РіС–РЅ ТЇР»РєРµР№С‚С–Рї, overflow Р±РѕР»РґС‹СЂРјР°Сѓ
+            height: 130, 
             child: ListView.builder(
               scrollDirection: Axis.horizontal,
               itemCount: categories.length,
               itemBuilder: (context, index) {
-                final category = categories[index]; // 'products' РµРјРµСЃ, 'categories'
+                final category = categories[index];
                 return _HorizontalCategory(
                   title: category['title'] ?? '',
                   assetPath: category['path'] ?? 'assets/images/soup.jpg',
@@ -250,6 +273,29 @@ class _HomeTab extends StatelessWidget {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+}
+
+class _Title extends StatelessWidget {
+  final String text;
+  const _Title(this.text, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 22,
+          decoration: BoxDecoration(
+            color: Colors.orange.shade700,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Text(text, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+      ],
     );
   }
 }
@@ -278,25 +324,22 @@ class _HorizontalCategory extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.orange.shade100,
-                  backgroundImage: AssetImage(assetPath),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.asset(assetPath.replaceFirst('assets/assets/', 'assets/'), width: 70, height: 70, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ),
         ),
       ),
@@ -313,16 +356,16 @@ class _RecommendedDishes extends StatefulWidget {
 }
 
 class _RecommendedDishesState extends State<_RecommendedDishes> {
-  Set<String> _favoriteIds = {};
-  List<dynamic> _products = [];
   bool _isLoading = true;
   bool _hasError = false;
+  List<dynamic> _products = [];
+  Set<String> _favoriteIds = {};
 
   @override
   void initState() {
     super.initState();
-    _loadFavorites();
     _loadProducts();
+    _loadFavorites();
   }
 
   Future<void> _loadProducts() async {
@@ -363,7 +406,6 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
     try {
       final result = await ApiService.toggleFavorite(widget.userId, productId);
       final isLiked = result['isLiked'] == true;
-      // Only update favorites set вЂ” do NOT reload the product list
       if (mounted) {
         setState(() {
           if (isLiked) { _favoriteIds.add(productId); }
@@ -391,7 +433,7 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
       child: Column(
         children: [
           Text(Loc.tr('error')),
-          TextButton(onPressed: _loadProducts, child: Text(Loc.tr('home'))), // Using home as filler for now or adding retry
+          TextButton(onPressed: _loadProducts, child: Text(Loc.tr('home'))),
         ],
       ),
     );
@@ -418,29 +460,6 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
   }
 }
 
-class _Title extends StatelessWidget {
-  final String text;
-  const _Title(this.text, {super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 6,
-          height: 22,
-          decoration: BoxDecoration(
-            color: Colors.orange.shade700,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Text(text, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-      ],
-    );
-  }
-}
-
 class _ProductCard extends StatelessWidget {
   final Map<String, dynamic> product; 
   final String userId;
@@ -457,153 +476,144 @@ class _ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lang = Loc.lang.value;
-    String title = '';
-    if (lang == 'kz') {
-      title = (product['titleKz'] ?? '').toString();
-    } else if (lang == 'ru') {
-      title = (product['titleRu'] ?? '').toString();
-    }
-    if (title.trim().isEmpty) {
-      title = (product['title'] ?? 'Title').toString();
-    }
+    return ValueListenableBuilder<String>(
+      valueListenable: Loc.lang,
+      builder: (context, lang, child) {
+        String title = '';
+        if (lang == 'kz') {
+          title = (product['titleKz'] ?? '').toString();
+        } else if (lang == 'ru') {
+          title = (product['titleRu'] ?? '').toString();
+        }
+        if (title.trim().isEmpty) {
+          title = (product['title'] ?? 'Title').toString();
+        }
 
-    final imageUrl = product['imageUrl'] ?? 'assets/images/soup.jpg';
-    final price = product['price'] ?? 0;
-    final sellerName = product['sellerName']?.toString().isNotEmpty == true
-        ? product['sellerName'].toString()
-        : (product['sellerId']?.toString() ?? Loc.tr('seller_label'));
-    final sellerLogo = product['sellerLogo']?.toString() ?? '';
+        final imageUrl = product['imageUrl'] ?? 'assets/images/soup.jpg';
+        final price = product['price'] ?? 0;
+        final sellerName = product['sellerName']?.toString().isNotEmpty == true
+            ? product['sellerName'].toString()
+            : (product['sellerId']?.toString() ?? Loc.tr('seller_label'));
+        final sellerLogo = product['sellerLogo']?.toString() ?? '';
 
-    // РђРІР°С‚Р°СЂ С€РµТЈР±РµСЂС–
-    Widget logoWidget;
-    if (sellerLogo.startsWith('http')) {
-      logoWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Image.network(sellerLogo, width: 36, height: 36, fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => _initials(sellerName)),
-      );
-    } else {
-      logoWidget = _initials(sellerName);
-    }
+        Widget logoWidget;
+        if (sellerLogo.startsWith('http')) {
+          logoWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Image.network(sellerLogo, width: 36, height: 36, fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => _initials(sellerName)),
+          );
+        } else {
+          logoWidget = _initials(sellerName);
+        }
 
-    return GestureDetector(
-      onTap: () => Navigator.push(context, MaterialPageRoute(
-        builder: (_) => ProductDetailScreen(product: product, userId: userId),
-      )),
-      child: Card(
-        margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          Stack(
-            children: [
-              imageUrl.startsWith('http') 
-                ? CachedNetworkImage(
-                    imageUrl: imageUrl, 
-                    height: 180, 
-                    width: double.infinity, 
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      height: 180,
-                      color: Colors.grey.shade200,
-                      child: const Center(child: CircularProgressIndicator()),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      height: 180,
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.error),
-                    ),
-                  )
-                : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), height: 180, width: double.infinity, fit: BoxFit.cover),
-            ],
-          ),
-            // РўР°СѓР°СЂ Р°С‚С‹ + РєР°С‚РµРіРѕСЂРёСЏ
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-              child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
-            ),
-            // РўУ©РјРµРЅРіС– Р±У©Р»С–РјС–: Р»РѕРіРѕ СЃРѕР»РґР°, РєРЅРѕРїРєР°Р»Р°СЂ + Р±Р°Т“Р° РѕТЈРґР°
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // РЎРѕР»: Р»РѕРіРѕ + Р±СЂРµРЅРґ Р°С‚С‹
-                  Expanded(
-                    child: Row(
-                      children: [
-                        logoWidget,
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            sellerName,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 2,
+        return GestureDetector(
+          onTap: () => Navigator.push(context, MaterialPageRoute(
+            builder: (_) => ProductDetailScreen(product: product, userId: userId),
+          )),
+          child: Card(
+            margin: const EdgeInsets.only(bottom: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Stack(
+                  children: [
+                    imageUrl.startsWith('http') 
+                      ? Image.network(
+                          imageUrl, 
+                          height: 180, 
+                          width: double.infinity, 
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: 180,
+                            color: Colors.grey.shade300,
+                            child: const Icon(Icons.error),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // РћТЈ: РєРЅРѕРїРєР°Р»Р°СЂ Р¶У™РЅРµ Р±Р°Т“Р°
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                        )
+                      : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), height: 180, width: double.infinity, fit: BoxFit.cover),
+                  ],
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
+                  child: Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold), maxLines: 2, overflow: TextOverflow.ellipsis),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          // Р›Р°Р№РєРєРЅРѕРїРєР°СЃС‹
-                          SizedBox(
-                            width: 36, height: 36,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: Icon(
-                                isFavorite ? Icons.favorite : Icons.favorite_border,
-                                color: Colors.red, size: 22,
+                      Expanded(
+                        child: Row(
+                          children: [
+                            logoWidget,
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                sellerName,
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 2,
                               ),
-                              onPressed: onFavoritePressed,
                             ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 36, height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: Icon(
+                                    isFavorite ? Icons.favorite : Icons.favorite_border,
+                                    color: Colors.red, size: 22,
+                                  ),
+                                  onPressed: onFavoritePressed,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              SizedBox(
+                                width: 36, height: 36,
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: const Icon(Icons.add_shopping_cart, color: Colors.orange, size: 22),
+                                  onPressed: () async {
+                                    if (userId == 'guest') {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('login_to_add'))));
+                                      return;
+                                    }
+                                    try {
+                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('adding_to_cart')), duration: const Duration(milliseconds: 500)));
+                                      await ApiService.addToCart(userId, product['_id']);
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('added_to_cart'))));
+                                    } catch (e) {
+                                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          // РљРµСЂС–РєРЅРѕРїРєР°СЃС‹
-                          SizedBox(
-                            width: 36, height: 36,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              icon: const Icon(Icons.add_shopping_cart, color: Colors.orange, size: 22),
-                              onPressed: () async {
-                                if (userId == 'guest') {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('login_to_add'))));
-                                  return;
-                                }
-                                try {
-                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('adding_to_cart')), duration: const Duration(milliseconds: 500)));
-                                  await ApiService.addToCart(userId, product['_id']);
-                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('added_to_cart'))));
-                                } catch (e) {
-                                  if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
-                                }
-                              },
-                            ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '$price ₸',
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      // Р‘Р°Т“Р°
-                      Text(
-                        '$price \u20B8',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
-                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -611,15 +621,9 @@ class _ProductCard extends StatelessWidget {
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
     return Container(
       width: 36, height: 36,
-      decoration: BoxDecoration(
-        color: Colors.orange.shade700,
-        borderRadius: BorderRadius.circular(18),
-      ),
+      decoration: BoxDecoration(color: Colors.orange.shade700, borderRadius: BorderRadius.circular(18)),
       alignment: Alignment.center,
       child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
     );
   }
 }
-
-
-

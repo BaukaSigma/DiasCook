@@ -14,7 +14,6 @@ class ProductDetailScreen extends StatefulWidget {
     this.userId = 'guest',
   });
 
-
   @override
   State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
@@ -22,7 +21,6 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isFavorite = false;
   bool _favoriteLoading = false;
-
 
   List<String> _normalizeList(dynamic value) {
     if (value == null) return [];
@@ -36,52 +34,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return text.isEmpty ? [] : [text];
   }
 
-  List<String> _preferList(dynamic primary, dynamic fallback) {
-    final primaryList = _normalizeList(primary);
-    if (primaryList.isNotEmpty) return primaryList;
+  List<String> _preferList(dynamic kz, dynamic ru, dynamic en, dynamic fallback) {
+    final lang = Loc.lang.value;
+    if (lang == 'kz') {
+       final list = _normalizeList(kz);
+       if (list.isNotEmpty) return list;
+    } else if (lang == 'ru') {
+       final list = _normalizeList(ru);
+       if (list.isNotEmpty) return list;
+    } else if (lang == 'en') {
+       final list = _normalizeList(en);
+       if (list.isNotEmpty) return list;
+    }
     return _normalizeList(fallback);
-  }
-
-  String? _findLine(String description, String prefix) {
-    for (final raw in description.split("\n")) {
-      final line = raw.trim();
-      if (line.startsWith(prefix)) return line;
-    }
-    return null;
-  }
-
-  List<String> _parseCommaList(String line, String prefix) {
-    final text = line.replaceFirst(prefix, "").trim();
-    if (text.isEmpty) return [];
-    return text
-        .split(",")
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
-  }
-
-  List<String> _parseStepsLine(String line, String prefix) {
-    final text = line.replaceFirst(prefix, "").trim();
-    if (text.isEmpty) return [];
-    return text
-        .split(RegExp(r"\.\s+"))
-        .map((item) => item.trim())
-        .where((item) => item.isNotEmpty)
-        .toList();
-  }
-
-  List<String> _extractMetaParts(String description) {
-    for (final raw in description.split("\n")) {
-      final line = raw.trim();
-      if (line.contains(" | ")) {
-        return line
-            .split(" | ")
-            .map((item) => item.trim())
-            .where((item) => item.isNotEmpty)
-            .toList();
-      }
-    }
-    return [];
   }
 
   Widget _sectionCard({
@@ -138,7 +103,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   Widget _stepRow(int index, String text) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -155,17 +120,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 12),
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.4),
+              style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.5),
             ),
           ),
         ],
       ),
     );
   }
+
   @override
   void initState() {
     super.initState();
@@ -188,7 +154,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Future<void> _toggleFavorite() async {
     if (widget.userId == 'guest') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Таңдаулыға қосу үшін кіріңіз.')),
+        SnackBar(content: Text(Loc.tr('must_login'))),
       );
       return;
     }
@@ -201,12 +167,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       if (!mounted) return;
       setState(() => _isFavorite = isLiked);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result['message'] ?? 'Сақталды')),
+        SnackBar(content: Text(result['message'] ?? Loc.tr('saved'))),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Қате: $e')),
+        SnackBar(content: Text('${Loc.tr('error')}: $e')),
       );
     } finally {
       if (mounted) {
@@ -215,7 +181,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     }
   }
 
-  // Сатушы аты-жөні арқылы шеңбер аватар
   Widget _sellerInitials(String name) {
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
     return Container(
@@ -231,334 +196,307 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String lang = Loc.lang.value;
-    
-    // Выбор заголовка
-    String title = '';
-    if (lang == 'kz') {
-      title = (widget.product['titleKz'] ?? '').toString();
-    } else if (lang == 'ru') {
-      title = (widget.product['titleRu'] ?? '').toString();
-    }
-    if (title.trim().isEmpty) {
-      title = (widget.product['title'] ?? 'Тақырыпсыз').toString();
-    }
-    
-    final String imageUrl = widget.product['imageUrl'] ?? 'assets/images/soup.jpg';
-    
-    // Логика выбора описания
-    String description = '';
-    if (lang == 'kz') {
-      description = (widget.product['descriptionKz'] ?? '').toString();
-    } else if (lang == 'ru') {
-      description = (widget.product['descriptionRu'] ?? '').toString();
-    }
-    if (description.trim().isEmpty) {
-      description = (widget.product['description'] ?? '').toString();
-    }
-    if (description.trim().isEmpty) {
-      description = Loc.tr('not_specified');
-    }
+    return ValueListenableBuilder<String>(
+      valueListenable: Loc.lang,
+      builder: (context, lang, child) {
+        String title = '';
+        if (lang == 'kz') {
+          title = (widget.product['titleKz'] ?? '').toString();
+        } else if (lang == 'ru') {
+          title = (widget.product['titleRu'] ?? '').toString();
+        } else if (lang == 'en') {
+          title = (widget.product['titleEn'] ?? '').toString();
+        }
+        if (title.trim().isEmpty) {
+          title = (widget.product['title'] ?? 'Title').toString();
+        }
+        
+        final String imageUrl = widget.product['imageUrl'] ?? 'assets/images/soup.jpg';
+        
+        String description = '';
+        if (lang == 'kz') {
+          description = (widget.product['descriptionKz'] ?? '').toString();
+        } else if (lang == 'ru') {
+          description = (widget.product['descriptionRu'] ?? '').toString();
+        } else if (lang == 'en') {
+          description = (widget.product['descriptionEn'] ?? '').toString();
+        }
+        if (description.trim().isEmpty) {
+          description = (widget.product['description'] ?? '').toString();
+        }
 
-    final price = widget.product['price'] ?? 0;
-    final String condition = widget.product['condition'] ?? Loc.tr('not_specified');
-    final String location = widget.product['location'] ?? Loc.tr('not_specified');
-    final String sellerName = widget.product['sellerName'] ?? widget.product['sellerId'] ?? Loc.tr('seller_label');
-    final String sellerLogo = widget.product['sellerLogo'] ?? '';
+        final ingredients = _preferList(
+          widget.product['ingredientsKz'],
+          widget.product['ingredientsRu'],
+          widget.product['ingredientsEn'],
+          widget.product['ingredients']
+        );
+        final steps = _preferList(
+          widget.product['stepsKz'],
+          widget.product['stepsRu'],
+          widget.product['stepsEn'],
+          widget.product['steps']
+        );
 
-    // Логика выбора состава и шагов
-    List<String> ingredients = [];
-    List<String> steps = [];
+        final sellerName = widget.product['sellerName']?.toString() ?? Loc.tr('seller_label');
+        final sellerLogo = widget.product['sellerLogo']?.toString() ?? '';
+        final instagram = widget.product['sellerInstagram']?.toString() ?? '';
+        final phone = widget.product['sellerPhone']?.toString() ?? '+7 (701) 123-45-67';
+        final fullAddress = widget.product['fullAddress']?.toString() ?? widget.product['location']?.toString() ?? Loc.tr('not_specified');
 
-    if (lang == 'kz') {
-      ingredients = _normalizeList(widget.product['ingredientsKz']);
-      steps = _normalizeList(widget.product['stepsKz']);
-    } else if (lang == 'ru') {
-      ingredients = _normalizeList(widget.product['ingredientsRu']);
-      steps = _normalizeList(widget.product['stepsRu']);
-    }
-
-    if (ingredients.isEmpty) {
-      ingredients = _normalizeList(widget.product['ingredients']);
-    }
-    if (steps.isEmpty) {
-      steps = _normalizeList(widget.product['steps']);
-    }
-
-    // Парсинг из описания (если поля пустые)
-    const ingredientsPrefixRu = 'Состав:';
-    const stepsPrefixRu = 'Приготовление:';
-    
-    if (ingredients.isEmpty) {
-      final line = _findLine(description, ingredientsPrefixRu);
-      if (line != null) ingredients = _parseCommaList(line, ingredientsPrefixRu);
-    }
-    if (steps.isEmpty) {
-      final line = _findLine(description, stepsPrefixRu);
-      if (line != null) steps = _parseStepsLine(line, stepsPrefixRu);
-    }
-
-    final metaParts = _extractMetaParts(description);
-    final hasStructured = ingredients.isNotEmpty || steps.isNotEmpty || metaParts.isNotEmpty;
-
-    final Widget productImage = imageUrl.startsWith('http')
-        ? CachedNetworkImage(
-            imageUrl: imageUrl,
-            width: double.infinity,
-            height: 300,
-            fit: BoxFit.cover,
-            placeholder: (context, url) => Container(
-              height: 300,
-              color: Colors.grey.shade200,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-            errorWidget: (context, url, error) => Container(
-              height: 300,
-              color: Colors.grey.shade300,
-              child: const Icon(Icons.error),
-            ),
-          )
-        : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), width: double.infinity, height: 300, fit: BoxFit.cover);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        backgroundColor: Colors.orange.shade700,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _favoriteLoading ? null : _toggleFavorite,
-            icon: Icon(
-              _isFavorite ? Icons.favorite : Icons.favorite_border,
-              color: Colors.white,
-            ),
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            productImage,
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        '${price} \u20B8',
-                        style: const TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.green,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                   Row(
-                    children: [
-                      const Icon(Icons.location_on, color: Colors.grey, size: 20),
-                      const SizedBox(width: 8),
-                      Text('${Loc.tr('location_label')}: $location', style: const TextStyle(fontSize: 16, color: Colors.black87)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      const Icon(Icons.info_outline, color: Colors.grey, size: 20),
-                      const SizedBox(width: 8),
-                      Text('${Loc.tr('condition_label')}: $condition', style: const TextStyle(fontSize: 16, color: Colors.black87)),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-                  // Сатушы блогі
-                  InkWell(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(
-                        builder: (_) => SellerProfileScreen(
-                          sellerId: widget.product['sellerId'] ?? '',
-                          sellerName: sellerName,
-                          sellerLogo: sellerLogo,
-                          userId: widget.userId,
-                          address: location,
+        return Scaffold(
+          backgroundColor: const Color(0xFFFDF7F2),
+          body: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                expandedHeight: 300,
+                pinned: true,
+                backgroundColor: Colors.orange.shade700,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: imageUrl.startsWith('http')
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            color: Colors.grey.shade200,
+                            child: const Center(child: Icon(Icons.error, size: 50)),
+                          ),
                         )
-                      ));
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Row(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
-                            child: sellerLogo.startsWith('http')
-                                ? Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => _sellerInitials(sellerName))
-                                : _sellerInitials(sellerName),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(Loc.tr('seller_label'), style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text(sellerName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                          Icon(Icons.chevron_right, color: Colors.grey.shade400),
-                        ],
-                      ),
+                      : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), fit: BoxFit.cover),
+                ),
+                leading: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black26,
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
                     ),
                   ),
-
-                  const Divider(height: 32),
-
-                  Text(
-                    Loc.tr('description_label'),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-
-                  if (hasStructured) ...[
-                    if (ingredients.isNotEmpty)
-                      _sectionCard(
-                        icon: Icons.receipt_long,
-                        title: Loc.tr('ingredients_label'),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: ingredients.map(_infoPill).toList(),
-                        ),
-                      ),
-                    if (metaParts.isNotEmpty)
-                      _sectionCard(
-                        icon: Icons.info_outline,
-                        title: Loc.tr('details_label'),
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: metaParts.map(_infoPill).toList(),
-                        ),
-                      ),
-                    if (steps.isNotEmpty)
-                      _sectionCard(
-                        icon: Icons.restaurant_menu,
-                        title: Loc.tr('steps_label'),
-                        child: Column(
-                          children: [
-                            for (int i = 0; i < steps.length; i++) _stepRow(i + 1, steps[i]),
-                          ],
-                        ),
-                      ),
-                    if (ingredients.isEmpty && steps.isEmpty && metaParts.isEmpty)
-                      Text(description, style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.4)),
-                  ] else
-                    Text(description, style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.4)),
-
-                  const SizedBox(height: 40),
-                  
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        if (widget.userId == 'guest') {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('login_to_add'))));
-                          return;
-                        }
-                        try {
-                          // ignore: use_build_context_synchronously
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('adding_to_cart')), duration: const Duration(milliseconds: 500)));
-                          await ApiService.addToCart(widget.userId, widget.product['_id']);
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('added_to_cart'))));
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
-                          }
-                        }
-                      },
-                      icon: const Icon(Icons.add_shopping_cart),
-                      label: Text(Loc.tr('add_to_cart'), style: const TextStyle(fontSize: 18)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => AlertDialog(
-                            title: Text(Loc.tr('contact_seller')),
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CircleAvatar(
-                                  radius: 30,
-                                  backgroundImage: sellerLogo.startsWith('http') ? NetworkImage(sellerLogo) : null,
-                                  child: !sellerLogo.startsWith('http') ? Text(sellerName.isNotEmpty ? sellerName[0] : '?') : null,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(sellerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                                const SizedBox(height: 8),
-                                const Text('+7 (701) 123-45-67', style: TextStyle(fontSize: 16, color: Colors.blue)),
-                              ],
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('OK'),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.chat),
-                      label: Text(Loc.tr('contact_seller'), style: const TextStyle(fontSize: 18)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.orange.shade700,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: CircleAvatar(
+                      backgroundColor: Colors.black26,
+                      child: IconButton(
+                        icon: _favoriteLoading 
+                            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : Icon(_isFavorite ? Icons.favorite : Icons.favorite_border, color: Colors.red),
+                        onPressed: _favoriteLoading ? null : _toggleFavorite,
                       ),
                     ),
                   ),
                 ],
               ),
+              
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w900, color: Colors.black87),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            '${widget.product['price'] ?? 0} \u20B8',
+                            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 20),
+                      
+                      if (description.isNotEmpty)
+                        _sectionCard(
+                          icon: Icons.description_outlined,
+                          title: Loc.tr('description_label'),
+                          child: Text(description, style: const TextStyle(fontSize: 15, color: Colors.black54, height: 1.5)),
+                        ),
+
+                      if (ingredients.isNotEmpty)
+                        _sectionCard(
+                          icon: Icons.shopping_basket_outlined,
+                          title: Loc.tr('ingredients_label'),
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: ingredients.map(_infoPill).toList(),
+                          ),
+                        ),
+
+                      if (steps.isNotEmpty)
+                        _sectionCard(
+                          icon: Icons.restaurant_menu_outlined,
+                          title: Loc.tr('steps_label'),
+                          child: Column(
+                            children: [
+                              for (int i = 0; i < steps.length; i++) _stepRow(i + 1, steps[i]),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 24),
+
+                      GestureDetector(
+                        onTap: () {
+                           if (widget.product['sellerId'] != null) {
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => SellerProfileScreen(
+                                  sellerId: widget.product['sellerId'], 
+                                  userId: widget.userId,
+                                  sellerName: sellerName,
+                                  sellerLogo: sellerLogo,
+                                  sellerInstagram: instagram,
+                                  address: fullAddress,
+                                  phone: phone,
+                                ),
+                              ));
+                           }
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.orange.shade100),
+                          ),
+                          child: Row(
+                            children: [
+                              sellerLogo.startsWith('http')
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(24),
+                                      child: Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover, 
+                                        errorBuilder: (_,__,___) => _sellerInitials(sellerName)),
+                                    )
+                                  : _sellerInitials(sellerName),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(Loc.tr('seller_label'), style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                                    Text(sellerName, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                    const SizedBox(height: 2),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.location_on, size: 14, color: Colors.orange),
+                                        const SizedBox(width: 4),
+                                        Expanded(child: Text(fullAddress, style: const TextStyle(fontSize: 12, color: Colors.grey), overflow: TextOverflow.ellipsis)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.chevron_right, color: Colors.orange),
+                            ],
+                          ),
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 120),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          bottomSheet: Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, -5))],
+              borderRadius: const BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
             ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      if (widget.userId == 'guest') {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('login_to_add'))));
+                        return;
+                      }
+                      try {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('adding_to_cart')), duration: const Duration(milliseconds: 500)));
+                        await ApiService.addToCart(widget.userId, widget.product['_id']);
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('added_to_cart'))));
+                      } catch (e) {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
+                      }
+                    },
+                    icon: const Icon(Icons.shopping_cart),
+                    label: Text(Loc.tr('add_to_cart')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade800,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () => _showContactDialog(context, sellerName, sellerLogo, instagram, phone, fullAddress),
+                    icon: const Icon(Icons.chat_bubble),
+                    label: Text(Loc.tr('contact_seller')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade800,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showContactDialog(BuildContext context, String name, String logo, String instagram, String phone, String address) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Center(child: Text(Loc.tr('contact_seller'), style: const TextStyle(fontWeight: FontWeight.bold))),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 40,
+              backgroundImage: logo.startsWith('http') ? NetworkImage(logo) : null,
+              child: !logo.startsWith('http') ? const Icon(Icons.person, size: 40) : null,
+            ),
+            const SizedBox(height: 16),
+            Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            Text(phone, style: TextStyle(fontSize: 18, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text(address, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+            if (instagram.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.camera_alt, color: Colors.purple),
+                  const SizedBox(width: 8),
+                  Text('@$instagram', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.purple)),
+                ],
+              ),
+            ],
           ],
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK', style: TextStyle(fontSize: 18))),
+        ],
       ),
     );
   }

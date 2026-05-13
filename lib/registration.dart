@@ -1,9 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-
 import 'api.dart';
-import 'home.dart'; 
 import 'login.dart';
+import 'home.dart';
+import 'localization.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -15,58 +14,43 @@ class RegistrationScreen extends StatefulWidget {
 class _RegistrationScreenState extends State<RegistrationScreen> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController surnameController = TextEditingController();
-  final TextEditingController phoneController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController repeatController = TextEditingController();
+  final TextEditingController confirmPasswordController = TextEditingController();
+  final TextEditingController phoneController = TextEditingController();
 
-  bool _obscure1 = true;
-  bool _obscure2 = true;
+  bool _obscure = true;
   bool _loading = false;
-  final String _baseUrl = 'http://localhost:3001/api'; 
 
   @override
   void dispose() {
     nameController.dispose();
     surnameController.dispose();
-    phoneController.dispose();
     emailController.dispose();
     passwordController.dispose();
-    repeatController.dispose();
+    confirmPasswordController.dispose();
+    phoneController.dispose();
     super.dispose();
   }
-
-  bool _isValidEmail(String email) =>
-      email.contains('@') && email.contains('.');
-
-  bool _isValidPassword(String pass) => pass.length >= 8;
 
   Future<void> _register() async {
     final name = nameController.text.trim();
     final surname = surnameController.text.trim();
-    final phone = phoneController.text.trim();
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
-    final repeatPassword = repeatController.text.trim();
+    final confirm = confirmPasswordController.text.trim();
+    final phone = phoneController.text.trim();
 
-    if (name.isEmpty || surname.isEmpty || phone.isEmpty || !_isValidEmail(email)) {
+    if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Өтінеміз, барлық жеке деректерді тексеріңіз.')),
+        SnackBar(content: Text(Loc.tr('error'))),
       );
       return;
     }
 
-    if (!_isValidPassword(password)) {
+    if (password != confirm) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Құпия сөз кемінде 8 таңбадан тұруы керек.')),
-      );
-      return;
-    }
-
-    if (password != repeatPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Құпия сөздер сәйкес келмейді.')),
+        SnackBar(content: Text(Loc.tr('error'))),
       );
       return;
     }
@@ -74,254 +58,163 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     setState(() => _loading = true);
 
     try {
-      final body = await ApiService.register({
+      final res = await ApiService.register({
         'name': name,
         'surname': surname,
-        'phone': phone,
         'email': email,
         'password': password,
+        'phone': phone,
       });
 
-      if (body['ok'] == true) {
-        final userId = body['userId'] ?? 'guest';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Тіркелу сәтті аяқталды!')),
-        );
-        
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => HomeScreen(userId: userId, startIndex: 0),
-          ),
-        );
+      if (res['ok'] == true) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(Loc.tr('saved')), backgroundColor: Colors.green),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => HomeScreen(userId: res['userId'])),
+          );
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text(body['error'] ?? 'Белгісіз қате. Қайтадан байқаңыз.')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(res['error'] ?? Loc.tr('error'))),
+          );
+        }
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Серверге қосылу қатесі: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${Loc.tr('error')}: $e')),
+        );
+      }
     } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final buttonChild = _loading
-        ? const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              color: Colors.white,
-              strokeWidth: 2,
+    return ValueListenableBuilder<String>(
+      valueListenable: Loc.lang,
+      builder: (context, lang, child) {
+        return Scaffold(
+          body: Container(
+            width: double.infinity,
+            height: double.infinity,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange.shade700, Colors.orange.shade300],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
             ),
-          )
-        : const Text('Тіркелу');
-    
-    final double topContainerHeight = 220; 
-    final double formTopPadding = 260; 
-
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: Stack(
-        children: [
-          // ------------------------------------
-          // 1. Жоғарғы қызғылт сары градиенттік бөлік (Биіктігі 220)
-          // ------------------------------------
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: topContainerHeight, 
-              // Тек қана статус-бардан кейінгі отступ
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top, 
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.orange.shade700, Colors.orange.shade400],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(40),
-                  bottomRight: Radius.circular(40),
-                ),
-              ),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
               child: Column(
-                // **БАСТЫ ӨЗГЕРІС:** Барлық элементтерді тігінен ортаға теңестіру
-                mainAxisAlignment: MainAxisAlignment.center, 
-                children: const [
-                  Icon(
-                    Icons.person_add,
-                    size: 50,
-                    color: Colors.white,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                      DropdownButton<String>(
+                        value: lang,
+                        dropdownColor: Colors.orange.shade800,
+                        iconEnabledColor: Colors.white,
+                        underline: Container(),
+                        onChanged: (val) {
+                          if (val != null) Loc.lang.value = val;
+                        },
+                        items: const [
+                          DropdownMenuItem(value: 'kz', child: Text('ҚАЗ', style: TextStyle(color: Colors.white, fontSize: 13))),
+                          DropdownMenuItem(value: 'ru', child: Text('РУС', style: TextStyle(color: Colors.white, fontSize: 13))),
+                          DropdownMenuItem(value: 'en', child: Text('ENG', style: TextStyle(color: Colors.white, fontSize: 13))),
+                        ],
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 8),
+                  const Icon(Icons.person_add, size: 70, color: Colors.white),
+                  const SizedBox(height: 10),
                   Text(
-                    'Жаңа аккаунт',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
+                    Loc.tr('register_title'),
+                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    Loc.tr('register_subtitle'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: Colors.white70),
+                  ),
+                  const SizedBox(height: 30),
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Column(
+                      children: [
+                        _buildField(nameController, Loc.tr('name_label'), Icons.person),
+                        const SizedBox(height: 16),
+                        _buildField(surnameController, Loc.tr('surname_label'), Icons.person_outline),
+                        const SizedBox(height: 16),
+                        _buildField(phoneController, Loc.tr('phone_label'), Icons.phone),
+                        const SizedBox(height: 16),
+                        _buildField(emailController, Loc.tr('email_label'), Icons.email),
+                        const SizedBox(height: 16),
+                        _buildField(passwordController, Loc.tr('password_label'), Icons.lock, obscure: _obscure),
+                        const SizedBox(height: 16),
+                        _buildField(confirmPasswordController, Loc.tr('repeat_password_label'), Icons.lock_outline, obscure: _obscure),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: _loading ? null : _register,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange.shade700,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: _loading 
+                                ? const CircularProgressIndicator(color: Colors.white) 
+                                : Text(Loc.tr('register'), style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Тіркеліп, рецепттерді таңдаулыға сақтаңыз',
-                    style: TextStyle(fontSize: 14, color: Colors.white70),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(Loc.tr('already_have_account'), style: const TextStyle(color: Colors.white)),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(Loc.tr('login'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
           ),
-          
-          // ------------------------------------
-          // 2. Тіркелу формасы (Отступ 260)
-          // ------------------------------------
-          Positioned.fill(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.only(top: formTopPadding), // Отступ 260
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Қосымша отступты алып тастадым, себебі 260 жеткілікті
-                    // const SizedBox(height: 20), 
-
-                    // Аты
-                    TextField(
-                      controller: nameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _buildInputDecoration('Аты', Icons.person_outline),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Тегі
-                    TextField(
-                      controller: surnameController,
-                      textCapitalization: TextCapitalization.words,
-                      decoration: _buildInputDecoration('Тегі', Icons.person_outline),
-                    ),
-                    const SizedBox(height: 16),
-                    
-                    // Телефон
-                    TextField(
-                      controller: phoneController,
-                      keyboardType: TextInputType.phone,
-                      decoration: _buildInputDecoration('Телефон нөмірі', Icons.phone_outlined),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Электрондық пошта
-                    TextField(
-                      controller: emailController,
-                      keyboardType: TextInputType.emailAddress,
-                      decoration: _buildInputDecoration('Электрондық пошта', Icons.email_outlined),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Құпия сөз
-                    TextField(
-                      controller: passwordController,
-                      obscureText: _obscure1,
-                      decoration: _buildPasswordDecoration('Құпия сөз', Icons.lock_outline, _obscure1, () => setState(() => _obscure1 = !_obscure1)),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Құпия сөзді қайталау
-                    TextField(
-                      controller: repeatController,
-                      obscureText: _obscure2,
-                      decoration: _buildPasswordDecoration('Құпия сөзді қайталау', Icons.lock_outline, _obscure2, () => setState(() => _obscure2 = !_obscure2)),
-                    ),
-
-                    const SizedBox(height: 24),
-                    
-                    // Тіркелу батырмасы
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade700,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: _loading ? null : _register,
-                        child: buttonChild,
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-                    
-                    // Кіру батырмасы
-                    Center(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text('Аккаунтыңыз бұрыннан бар ма?'),
-                          const SizedBox(width: 6),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context); // Артқа, LoginScreen-ге
-                            },
-                            child: Text(
-                              'Кіру',
-                              style: TextStyle(color: Colors.orange.shade700, fontWeight: FontWeight.bold),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24), 
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
-  
-  // input field-терге арналған көмекші функция
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.orange),
-      filled: true,
-      fillColor: Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.orange.shade400, width: 2),
-      ),
-    );
-  }
-  
-  // құпия сөз өрістеріне арналған көмекші функция
-  InputDecoration _buildPasswordDecoration(String label, IconData icon, bool obscure, VoidCallback toggleVisibility) {
-    return _buildInputDecoration(label, icon).copyWith(
-      suffixIcon: IconButton(
-        icon: Icon(
-          obscure ? Icons.visibility : Icons.visibility_off,
-          color: Colors.grey,
-        ),
-        onPressed: toggleVisibility,
+
+  Widget _buildField(TextEditingController controller, String label, IconData icon, {bool obscure = false}) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }

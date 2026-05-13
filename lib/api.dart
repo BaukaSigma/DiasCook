@@ -62,11 +62,19 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> searchProductsWithAI(String query) async {
-    // В Firebase нет встроенного AI, делаем обычный текстовый поиск
     final snapshot = await _db.collection('products').get();
+    final q = query.toLowerCase();
     final results = snapshot.docs.where((d) {
-      final title = (d.data()['title'] ?? '').toString().toLowerCase();
-      return title.contains(query.toLowerCase());
+      final data = d.data();
+      final title = (data['title'] ?? '').toString().toLowerCase();
+      final titleKz = (data['titleKz'] ?? '').toString().toLowerCase();
+      final titleRu = (data['titleRu'] ?? '').toString().toLowerCase();
+      final desc = (data['description'] ?? '').toString().toLowerCase();
+      final descKz = (data['descriptionKz'] ?? '').toString().toLowerCase();
+      final descRu = (data['descriptionRu'] ?? '').toString().toLowerCase();
+      
+      return title.contains(q) || titleKz.contains(q) || titleRu.contains(q) ||
+             desc.contains(q) || descKz.contains(q) || descRu.contains(q);
     }).map((d) => {'_id': d.id, ...d.data()}).toList();
     return {'ok': true, 'results': results};
   }
@@ -75,7 +83,7 @@ class ApiService {
   static Future<Map<String, dynamic>> getUserById(String userId) async {
     final doc = await _db.collection('users').doc(userId).get();
     if (!doc.exists) throw Exception('Табылмады');
-    return {'ok': true, 'user': doc.data()};
+    return {'ok': true, 'user': {'userId': doc.id, ...?doc.data()}};
   }
 
   static Future<void> updateUserAddress(String userId, String address) async {

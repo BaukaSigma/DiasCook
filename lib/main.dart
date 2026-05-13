@@ -23,7 +23,6 @@ class MyApp extends StatelessWidget {
       valueListenable: Loc.lang,
       builder: (context, lang, child) {
         return MaterialApp(
-          key: ValueKey(lang),
           debugShowCheckedModeBanner: false,
           title: Loc.tr('app_title'),
       theme: ThemeData(
