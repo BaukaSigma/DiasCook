@@ -94,13 +94,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(50),
-                        child: logo.startsWith('http')
-                            ? CachedNetworkImage(
-                                imageUrl: logo,
-                                width: 100, height: 100, fit: BoxFit.cover,
-                                errorWidget: (c, u, e) => _initials(name),
-                              )
-                            : _initials(name),
+                        child: logo.startsWith('assets/')
+                            ? Image.asset(logo, width: 100, height: 100, fit: BoxFit.cover)
+                            : logo.startsWith('http')
+                                ? CachedNetworkImage(
+                                    imageUrl: logo,
+                                    width: 100, height: 100, fit: BoxFit.cover,
+                                    errorWidget: (c, u, e) => _initials(name),
+                                  )
+                                : _initials(name),
                       ),
                       const SizedBox(height: 16),
                       Text(

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'mock_data.dart';
 
 class ApiService {
   static final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -44,16 +45,101 @@ class ApiService {
     }
   }
 
+  // Нормализация категорий (транслит → правильный KZ)
+  static const Map<String, String> _catNorm = {
+    'таны ертенгилик': 'Таң ертеңгілік',
+    'тан ертенгiлiк': 'Таң ертеңгілік',
+    'тан ертенгилик': 'Таң ертеңгілік',
+    'breakfast': 'Таң ертеңгілік',
+    'завтрак': 'Таң ертеңгілік',
+    'тускi ас': 'Түскі ас',
+    'тусkі ас': 'Түскі ас',
+    'обед': 'Түскі ас',
+    'lunch': 'Түскі ас',
+    'кешкi ас': 'Кешкі ас',
+    'ужин': 'Кешкі ас',
+    'dinner': 'Кешкі ас',
+    'татiлер': 'Тәттілер',
+    'десерты': 'Тәттілер',
+    'desserts': 'Тәттілер',
+    'dessert': 'Тәттілер',
+    'тагамдар': 'Тағамдар',
+    'закуски': 'Тағамдар',
+    'snacks': 'Тағамдар',
+    'алгашкы тагам': 'Алғашқы тағам',
+    'первые блюда': 'Алғашқы тағам',
+    'appetizer': 'Алғашқы тағам',
+    'appetizers': 'Алғашқы тағам',
+    'гарнир': 'Гарнир',
+    'side dish': 'Гарнир',
+    'side_dish': 'Гарнир',
+    'сусындар': 'Сусындар',
+    'напитки': 'Сусындар',
+    'beverage': 'Сусындар',
+    'beverages': 'Сусындар',
+    'баска': 'Басқа',
+    'другое': 'Басқа',
+    'other': 'Басқа',
+  };
+
+  // --- Хелпер: обогащение продукта (аватарка, адрес, категория) ---
+  static Map<String, dynamic> _enrichProduct(String id, Map<String, dynamic> data) {
+    final result = Map<String, dynamic>.from({'_id': id, ...data});
+    // Нормализуем категорию
+    final rawCat = (result['category'] ?? '').toString();
+    final normalized = _catNorm[rawCat.toLowerCase()];
+    if (normalized != null) result['category'] = normalized;
+    // Если нет аватарки продавца — генерируем deterministic фото по sellerId
+    const _avatarAssets = [
+      'assets/images/avatar_gulzira.jpg',
+      'assets/images/avatar_nazgul.jpg',
+      'assets/images/avatar_zarina.jpg',
+      'assets/images/avatar_madina.jpg',
+      'assets/images/avatar_aigerim.jpg',
+      'assets/images/avatar_arman.jpg',
+      'assets/images/avatar_erkebulan.jpg',
+    ];
+    final logo = (result['sellerLogo'] ?? '').toString();
+    final needsReplacement = logo.isEmpty
+        || logo.contains('pravatar.cc')
+        || logo.contains('randomuser.me')
+        || (!logo.startsWith('http') && !logo.startsWith('assets/'));
+    if (needsReplacement) {
+      final sellerId = (result['sellerId'] ?? result['sellerName'] ?? 'user').toString();
+      final idx = sellerId.codeUnits.fold(0, (a, b) => a + b) % _avatarAssets.length;
+      result['sellerLogo'] = _avatarAssets[idx];
+    }
+    // Если адрес пустой — ставим Астана
+    final loc = (result['location'] ?? '').toString();
+    if (loc.isEmpty) result['location'] = 'Астана';
+    return result;
+  }
+
   // --- Өнімдер ---
   static Future<List<dynamic>> getProducts() async {
     final snapshot = await _db.collection('products').get();
-    return snapshot.docs.map((d) => {'_id': d.id, ...d.data()}).toList();
+    final firebaseProducts = snapshot.docs.map((d) => _enrichProduct(d.id, d.data())).toList();
+    // Добавляем mock-блюда (они всегда есть, с правильными категориями)
+    final firebaseIds = firebaseProducts.map((p) => p['_id'].toString()).toSet();
+    final mocks = mockRecipes
+        .map((m) => _enrichProduct(m['_id'] as String, Map<String, dynamic>.from(m)))
+        .where((m) => !firebaseIds.contains(m['_id'].toString()))
+        .toList();
+    return [...firebaseProducts, ...mocks];
   }
 
   static Future<Map<String, dynamic>> getProductById(String id) async {
+    // Mock product?
+    if (id.startsWith('mock_')) {
+      final mock = mockRecipes.firstWhere(
+        (m) => m['_id'] == id,
+        orElse: () => <String, dynamic>{},
+      );
+      if (mock.isNotEmpty) return _enrichProduct(id, Map<String, dynamic>.from(mock));
+    }
     final doc = await _db.collection('products').doc(id).get();
     if (!doc.exists) throw Exception('Табылмады');
-    return {'_id': doc.id, ...doc.data()!};
+    return _enrichProduct(doc.id, doc.data()!);
   }
 
   static Future<Map<String, dynamic>> addProduct(Map<String, dynamic> product) async {
@@ -75,7 +161,7 @@ class ApiService {
       
       return title.contains(q) || titleKz.contains(q) || titleRu.contains(q) ||
              desc.contains(q) || descKz.contains(q) || descRu.contains(q);
-    }).map((d) => {'_id': d.id, ...d.data()}).toList();
+    }).map((d) => _enrichProduct(d.id, d.data())).toList();
     return {'ok': true, 'results': results};
   }
 
@@ -91,9 +177,8 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getRecommendedProducts(String userId) async {
-    // Firebase: просто возвращаем первые 10 товаров
     final snapshot = await _db.collection('products').limit(10).get();
-    return snapshot.docs.map((d) => {'_id': d.id, ...d.data()}).toList();
+    return snapshot.docs.map((d) => _enrichProduct(d.id, d.data())).toList();
   }
 
   // --- Әкімші (Admin) ---
@@ -154,7 +239,7 @@ class ApiService {
     final snapshot = await _db.collection('products').get();
     return snapshot.docs
         .where((d) => favorites.contains(d.id))
-        .map((d) => {'_id': d.id, ...d.data()})
+        .map((d) => _enrichProduct(d.id, d.data()))
         .toList();
   }
   
@@ -175,7 +260,7 @@ class ApiService {
         total += price * qty;
         cartWithProducts.add({
           '_id': item['_id'],
-          'productId': {'_id': pDoc.id, ...pData},
+          'productId': _enrichProduct(pDoc.id, pData),
           'quantity': qty,
         });
       }

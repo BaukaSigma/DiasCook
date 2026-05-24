@@ -1,11 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'login.dart';
-
-// Қалпына келтіру процесінің қадамдары
-enum ResetStep { enterEmail, verifyCode, resetPassword }
+import 'localization.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({super.key});
@@ -16,29 +13,18 @@ class ForgotPasswordScreen extends StatefulWidget {
 
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController codeController = TextEditingController();
-  final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController confirmPasswordController = TextEditingController();
-
-  ResetStep _currentStep = ResetStep.enterEmail;
   bool _loading = false;
-  bool _obscureNew = true;
-  bool _obscureConfirm = true;
-  final String _baseUrl = 'http://localhost:3001/api';
+  bool _sent = false;
 
   @override
   void dispose() {
     emailController.dispose();
-    codeController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
     super.dispose();
   }
 
   bool _isValidEmail(String email) => email.contains('@') && email.contains('.');
 
-  // 1. Кодты жіберу
-  Future<void> _sendCode() async {
+  Future<void> _sendResetEmail() async {
     final email = emailController.text.trim();
     if (!_isValidEmail(email)) {
       _showSnackBar('Дұрыс электрондық пошта адресін енгізіңіз.');
@@ -48,106 +34,31 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _loading = true);
 
     try {
-      final res = await http.post(
-        Uri.parse('$_baseUrl/forgot-password/send-code'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email}),
-      );
-
-      final body = jsonDecode(res.body);
-
-      if (res.statusCode == 200) {
-        _showSnackBar('Қалпына келтіру коды электрондық поштаға жіберілді.');
-        setState(() => _currentStep = ResetStep.verifyCode);
-      } else if (res.statusCode == 404) {
-        _showSnackBar(body['error'] ?? 'Бұл электрондық пошта тіркелмеген.');
-      } else {
-        _showSnackBar(body['error'] ?? 'Сұрау кезінде қате пайда болды.');
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      if (mounted) {
+        setState(() => _sent = true);
+        _showSnackBar('Құпия сөзді қалпына келтіру сілтемесі ${email} поштасына жіберілді!');
       }
-    } catch (e) {
-      _showSnackBar('Серверге қосылу қатесі.');
-    } finally {
-      setState(() => _loading = false);
-    }
-  }
-
-  // 2. Кодты тексеру
-  Future<void> _verifyCode() async {
-    final email = emailController.text.trim();
-    final code = codeController.text.trim();
-
-    if (code.isEmpty || code.length != 6) {
-      _showSnackBar('8 таңбалы кодты енгізіңіз.');
-      return;
-    }
-
-    setState(() => _loading = true);
-
-    try {
-      final res = await http.post(
-        Uri.parse('$_baseUrl/forgot-password/verify-code'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'code': code}),
-      );
-
-      final body = jsonDecode(res.body);
-
-      if (res.statusCode == 200) {
-        _showSnackBar('Код сәтті расталды.');
-        setState(() => _currentStep = ResetStep.resetPassword);
-      } else {
-        _showSnackBar(body['error'] ?? 'Кодты тексеру қатесі.');
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'user-not-found':
+          message = Loc.tr('reset_user_not_found');
+          break;
+        case 'invalid-email':
+          message = Loc.tr('reset_invalid_email');
+          break;
+        case 'too-many-requests':
+          message = Loc.tr('reset_too_many');
+          break;
+        default:
+          message = '${e.message ?? Loc.tr('error')} (${e.code})';
       }
+      if (mounted) _showSnackBar(message);
     } catch (e) {
-      _showSnackBar('Серверге қосылу қатесі.');
+      if (mounted) _showSnackBar('${Loc.tr('error')}: $e');
     } finally {
-      setState(() => _loading = false);
-    }
-  }
-
-  // 3. Құпия сөзді жаңарту
-  Future<void> _resetPassword() async {
-    final email = emailController.text.trim();
-    final newPassword = newPasswordController.text;
-    final confirmPassword = confirmPasswordController.text;
-
-    if (newPassword != confirmPassword) {
-      _showSnackBar('Құпия сөздер сәйкес келмейді.');
-      return;
-    }
-
-    // Используем вынесенную функцию валидации
-    if (!validatePassword(newPassword)) {
-      _showSnackBar('Құпия сөз кемінде 8 таңбадан тұруы керек және бір үлкен әріп, бір кіші әріп, бір сан және бір арнайы символ болуы керек.');
-      return;
-    }
-
-    setState(() => _loading = true);
-
-    try {
-      final res = await http.post(
-        Uri.parse('$_baseUrl/forgot-password/reset-password'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'newPassword': newPassword}),
-      );
-
-      final body = jsonDecode(res.body);
-
-      if (res.statusCode == 200) {
-        _showSnackBar('Құпия сөз сәтті жаңартылды!');
-        
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginScreen()),
-          (Route<dynamic> route) => false,
-        );
-      } else {
-        _showSnackBar(body['error'] ?? 'Құпия сөзді жаңарту қатесі.');
-      }
-    } catch (e) {
-      _showSnackBar('Серверге қосылу қатесі.');
-    } finally {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -157,31 +68,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final double topContainerHeight = 220;
-    final double formTopPadding = 260;
-
-    String titleText;
-    String subtitleText;
-    IconData icon;
-
-    switch (_currentStep) {
-      case ResetStep.enterEmail:
-        titleText = 'Құпия сөзді қалпына келтіру';
-        subtitleText = 'Электрондық поштаңызды енгізіңіз';
-        icon = Icons.email_outlined;
-        break;
-      case ResetStep.verifyCode:
-        titleText = 'Растау кодын енгізіңіз';
-        subtitleText = 'Поштаға жіберілген код';
-        icon = Icons.key_outlined;
-        break;
-      case ResetStep.resetPassword:
-        titleText = 'Жаңа құпия сөз';
-        subtitleText = 'Құпия сөзді жаңарту';
-        icon = Icons.lock_reset;
-        break;
-    }
-
+    return ValueListenableBuilder<String>(
+      valueListenable: Loc.lang,
+      builder: (context, lang, _) {
     return Scaffold(
       backgroundColor: Colors.white,
       body: Stack(
@@ -191,10 +80,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             left: 0,
             right: 0,
             child: Container(
-              height: topContainerHeight,
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top,
-              ),
+              height: 220,
+              padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [Colors.orange.shade700, Colors.orange.shade400],
@@ -206,23 +93,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   bottomRight: Radius.circular(40),
                 ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Stack(
                 children: [
-                  Icon(icon, size: 70, color: Colors.white),
-                  const SizedBox(height: 8),
-                  Text(
-                    titleText,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const SizedBox(width: double.infinity),
+                      Icon(_sent ? Icons.mark_email_read_outlined : Icons.email_outlined, size: 70, color: Colors.white),
+                      const SizedBox(height: 8),
+                      Text(
+                        _sent ? Loc.tr('reset_sent_title') : Loc.tr('forgot_password_title'),
+                        style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _sent ? Loc.tr('reset_check_inbox') : Loc.tr('reset_enter_email'),
+                        style: const TextStyle(fontSize: 16, color: Colors.white70),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitleText,
-                    style: const TextStyle(fontSize: 16, color: Colors.white70),
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: DropdownButton<String>(
+                      value: lang,
+                      dropdownColor: Colors.orange.shade800,
+                      iconEnabledColor: Colors.white,
+                      underline: Container(),
+                      onChanged: (val) { if (val != null) Loc.lang.value = val; },
+                      items: const [
+                        DropdownMenuItem(value: 'kz', child: Text('ҚАЗ', style: TextStyle(color: Colors.white, fontSize: 13))),
+                        DropdownMenuItem(value: 'ru', child: Text('РУС', style: TextStyle(color: Colors.white, fontSize: 13))),
+                        DropdownMenuItem(value: 'en', child: Text('ENG', style: TextStyle(color: Colors.white, fontSize: 13))),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -230,50 +134,92 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           Positioned.fill(
             child: SingleChildScrollView(
-              padding: EdgeInsets.only(top: formTopPadding),
+              padding: const EdgeInsets.only(top: 260),
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const SizedBox(height: 20),
-                    _buildStepContent(),
-                    const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.orange.shade700,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: _loading ? null : _getButtonAction(),
-                        child: _getButtonChild(),
+                    if (!_sent) ...[
+                      Text(
+                        Loc.tr('reset_email_hint'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 14, color: Colors.grey),
                       ),
-                    ),
+                      const SizedBox(height: 24),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          labelText: Loc.tr('email_label'),
+                          prefixIcon: const Icon(Icons.email_outlined, color: Colors.orange),
+                          filled: true,
+                          fillColor: Colors.grey.shade100,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: Colors.orange.shade400, width: 2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: _loading ? null : _sendResetEmail,
+                          child: _loading
+                              ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                              : Text(Loc.tr('reset_send_btn')),
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 12),
+                      const Icon(Icons.check_circle_outline, size: 80, color: Colors.green),
+                      const SizedBox(height: 16),
+                      Text(
+                        Loc.tr('reset_sent_body').replaceFirst('{email}', emailController.text),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 15, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade700,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () => Navigator.pushAndRemoveUntil(
+                            context,
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            (route) => false,
+                          ),
+                          child: Text(Loc.tr('back_to_login')),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     Center(
                       child: TextButton(
-                        onPressed: () {
-                          if (_currentStep == ResetStep.enterEmail) {
-                            Navigator.pop(context); 
-                          } else {
-                            setState(() {
-                              _currentStep = ResetStep.values[_currentStep.index - 1];
-                            });
-                          }
-                        },
-                        child: Text(
-                          'Артқа оралу',
-                          style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic),
-                        ),
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(Loc.tr('back'), style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic)),
                       ),
                     ),
-                    const SizedBox(height: 24), 
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -282,144 +228,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ],
       ),
     );
-  }
-
-  Widget _buildStepContent() {
-    switch (_currentStep) {
-      case ResetStep.enterEmail:
-        return _buildEmailStep();
-      case ResetStep.verifyCode:
-        return _buildCodeStep();
-      case ResetStep.resetPassword:
-        return _buildResetPasswordStep();
-    }
-  }
-
-  Widget _buildEmailStep() {
-    return Column(
-      children: [
-        const Text(
-          'Аккаунтыңызға байланыстырылған электрондық поштаны енгізіңіз. Біз сізге растау кодын жібереміз.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: emailController,
-          keyboardType: TextInputType.emailAddress,
-          decoration: _buildInputDecoration('Электрондық пошта', Icons.email_outlined),
-        ),
-      ],
+      },
     );
-  }
-
-  Widget _buildCodeStep() {
-    return Column(
-      children: [
-        Text(
-          'Біз ${emailController.text} поштасына 6 таңбалы код жібердік. Кодты тексеру үшін төменге енгізіңіз.',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 14, color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: codeController,
-          keyboardType: TextInputType.number,
-          maxLength: 6,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 24, letterSpacing: 10),
-          decoration: _buildInputDecoration('Код', Icons.key_outlined).copyWith(
-            counterText: '', 
-            prefixIcon: null,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResetPasswordStep() {
-    return Column(
-      children: [
-        const Text(
-          'Жаңа құпия сөзді орнатыңыз. Құпия сөз кемінде 8 таңбадан тұруы керек және бір үлкен, бір кіші әріп, бір сан және бір арнайы символ болуы керек.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 14, color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-        TextField(
-          controller: newPasswordController,
-          obscureText: _obscureNew,
-          decoration: _buildPasswordDecoration('Жаңа құпия сөз', Icons.lock_outline, _obscureNew, () => setState(() => _obscureNew = !_obscureNew)),
-        ),
-        const SizedBox(height: 16),
-        TextField(
-          controller: confirmPasswordController,
-          obscureText: _obscureConfirm,
-          decoration: _buildPasswordDecoration('Құпия сөзді қайталау', Icons.lock_outline, _obscureConfirm, () => setState(() => _obscureConfirm = !_obscureConfirm)),
-        ),
-      ],
-    );
-  }
-
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, color: Colors.orange),
-      filled: true,
-      fillColor: Colors.grey.shade100,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.orange.shade400, width: 2),
-      ),
-    );
-  }
-  
-  InputDecoration _buildPasswordDecoration(String label, IconData icon, bool obscure, VoidCallback toggleVisibility) {
-    return _buildInputDecoration(label, icon).copyWith(
-      suffixIcon: IconButton(
-        icon: Icon(
-          obscure ? Icons.visibility : Icons.visibility_off,
-          color: Colors.grey,
-        ),
-        onPressed: toggleVisibility,
-      ),
-    );
-  }
-
-  Widget _getButtonChild() {
-    if (_loading) {
-      return const SizedBox(
-        width: 24,
-        height: 24,
-        child: CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 2,
-        ),
-      );
-    }
-    switch (_currentStep) {
-      case ResetStep.enterEmail:
-        return const Text('Қалпына келтіру кодын жіберу');
-      case ResetStep.verifyCode:
-        return const Text('Кодты тексеру');
-      case ResetStep.resetPassword:
-        return const Text('Құпия сөзді жаңарту');
-    }
-  }
-
-  VoidCallback _getButtonAction() {
-    switch (_currentStep) {
-      case ResetStep.enterEmail:
-        return _sendCode;
-      case ResetStep.verifyCode:
-        return _verifyCode;
-      case ResetStep.resetPassword:
-        return _resetPassword;
-    }
   }
 }
 

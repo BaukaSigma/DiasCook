@@ -495,12 +495,16 @@ class _ProductCard extends StatelessWidget {
             ? product['sellerName'].toString()
             : (product['sellerId']?.toString() ?? Loc.tr('seller_label'));
         final sellerLogo = product['sellerLogo']?.toString() ?? '';
-
         Widget logoWidget;
-        if (sellerLogo.startsWith('http')) {
+        if (sellerLogo.startsWith('assets/')) {
           logoWidget = ClipRRect(
             borderRadius: BorderRadius.circular(18),
-            child: Image.network(sellerLogo, width: 36, height: 36, fit: BoxFit.contain,
+            child: Image.asset(sellerLogo, width: 36, height: 36, fit: BoxFit.cover),
+          );
+        } else if (sellerLogo.startsWith('http')) {
+          logoWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Image.network(sellerLogo, width: 36, height: 36, fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _initials(sellerName)),
           );
         } else {
@@ -601,7 +605,7 @@ class _ProductCard extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            '$price ₸',
+                            '${_roundPrice(price)} ₸',
                             style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
                           ),
                         ],
@@ -617,11 +621,22 @@ class _ProductCard extends StatelessWidget {
     );
   }
 
+  int _roundPrice(dynamic price) {
+    final p = (price ?? 0).toDouble();
+    return (p / 100).round() * 100;
+  }
+
   Widget _initials(String name) {
     final initials = name.isNotEmpty ? name[0].toUpperCase() : '?';
+    const colors = [
+      Color(0xFFE53935), Color(0xFF8E24AA), Color(0xFF1E88E5),
+      Color(0xFF00897B), Color(0xFFF4511E), Color(0xFF6D4C41),
+      Color(0xFF039BE5), Color(0xFF43A047), Color(0xFFD81B60),
+    ];
+    final color = colors[name.codeUnits.fold(0, (a, b) => a + b) % colors.length];
     return Container(
       width: 36, height: 36,
-      decoration: BoxDecoration(color: Colors.orange.shade700, borderRadius: BorderRadius.circular(18)),
+      decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(18)),
       alignment: Alignment.center,
       child: Text(initials, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
     );

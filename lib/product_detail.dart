@@ -371,13 +371,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           ),
                           child: Row(
                             children: [
-                              sellerLogo.startsWith('http')
+                              sellerLogo.startsWith('assets/')
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(24),
-                                      child: Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover, 
-                                        errorBuilder: (_,__,___) => _sellerInitials(sellerName)),
+                                      child: Image.asset(sellerLogo, width: 48, height: 48, fit: BoxFit.cover),
                                     )
-                                  : _sellerInitials(sellerName),
+                                  : sellerLogo.startsWith('http')
+                                      ? ClipRRect(
+                                          borderRadius: BorderRadius.circular(24),
+                                          child: Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover,
+                                            errorBuilder: (_,__,___) => _sellerInitials(sellerName)),
+                                        )
+                                      : _sellerInitials(sellerName),
                               const SizedBox(width: 14),
                               Expanded(
                                 child: Column(
