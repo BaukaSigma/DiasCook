@@ -210,7 +210,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(Loc.tr('no_account'), style: const TextStyle(color: Colors.white)),
                       TextButton(
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegistrationScreen())),
-                        child: Text(Loc.tr('register'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                        child: Text(Loc.tr('register'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),

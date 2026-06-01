@@ -47,6 +47,7 @@ class ApiService {
 
   // Нормализация категорий (транслит → правильный KZ)
   static const Map<String, String> _catNorm = {
+    'таңертеңгілік': 'Таң ертеңгілік',
     'таны ертенгилик': 'Таң ертеңгілік',
     'тан ертенгiлiк': 'Таң ертеңгілік',
     'тан ертенгилик': 'Таң ертеңгілік',
@@ -103,7 +104,7 @@ class ApiService {
     final needsReplacement = logo.isEmpty
         || logo.contains('pravatar.cc')
         || logo.contains('randomuser.me')
-        || (!logo.startsWith('http') && !logo.startsWith('assets/'));
+        || (!logo.startsWith('http') && !logo.startsWith('assets/') && !logo.startsWith('data:'));
     if (needsReplacement) {
       final sellerId = (result['sellerId'] ?? result['sellerName'] ?? 'user').toString();
       final idx = sellerId.codeUnits.fold(0, (a, b) => a + b) % _avatarAssets.length;
@@ -177,8 +178,18 @@ class ApiService {
   }
 
   static Future<List<dynamic>> getRecommendedProducts(String userId) async {
-    final snapshot = await _db.collection('products').limit(10).get();
+    return getProducts();
+  }
+
+  static Future<List<dynamic>> getProductsByUserId(String userId) async {
+    final snapshot = await _db.collection('products')
+        .where('sellerId', isEqualTo: userId)
+        .get();
     return snapshot.docs.map((d) => _enrichProduct(d.id, d.data())).toList();
+  }
+
+  static Future<void> deleteProduct(String productId) async {
+    await _db.collection('products').doc(productId).delete();
   }
 
   // --- Әкімші (Admin) ---

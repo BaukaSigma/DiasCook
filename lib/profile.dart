@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import 'login.dart';
 import 'add_product.dart';
+import 'my_products.dart';
 import 'localization.dart';
 
 Widget _buildInfoCard({
@@ -156,6 +157,24 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                   label: Text(Loc.tr('add_product')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => MyProductsScreen(userId: user['userId'])));
+                  },
+                  icon: const Icon(Icons.restaurant_menu),
+                  label: const Text('Менің тағамдарым'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade600,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'login.dart';
 import 'product_detail.dart';
+import 'firestore_image.dart';
 import 'localization.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -100,17 +101,12 @@ class FavoritesScreenState extends State<FavoritesScreen> {
                     elevation: 2,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: ListTile(
-                      leading: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: imageUrl.toString().startsWith('http')
-                            ? Image.network(
-                                imageUrl,
-                                width: 52,
-                                height: 52,
-                                fit: BoxFit.cover,
-                                errorBuilder: (c, e, s) => const Icon(Icons.fastfood, size: 52),
-                              )
-                            : const Icon(Icons.fastfood, size: 52),
+                      leading: SizedBox(
+                        width: 52, height: 52,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: FirestoreImage(imageUrl: imageUrl.toString(), width: 52, height: 52),
+                        ),
                       ),
                       title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text(

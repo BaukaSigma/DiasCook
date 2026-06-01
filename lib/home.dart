@@ -7,6 +7,7 @@ import 'favorites.dart';
 import 'product_detail.dart'; 
 import 'cart.dart';
 import 'localization.dart';
+import 'firestore_image.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -50,6 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
   late int _currentIndex;
   final GlobalKey<FavoritesScreenState> _favoritesKey = GlobalKey<FavoritesScreenState>();
   final GlobalKey<CartScreenState> _cartKey = GlobalKey<CartScreenState>();
+  final GlobalKey<_RecommendedDishesState> _dishesKey = GlobalKey<_RecommendedDishesState>();
 
   @override
   void initState() {
@@ -62,6 +64,9 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _currentIndex = index;
     });
+    if (index == 0) {
+      _dishesKey.currentState?.reload();
+    }
     if (index == 2) {
       _favoritesKey.currentState?.refreshFavorites();
     }
@@ -84,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ];
 
         final List<Widget> tabs = <Widget>[
-          _HomeTab(userId: widget.userId),
+          _HomeTab(userId: widget.userId, dishesKey: _dishesKey),
           SearchScreen(
             userId: widget.userId,
             initialCategory: widget.initialSearchCategory,
@@ -152,7 +157,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
 class _HomeTab extends StatelessWidget {
   final String userId;
-  const _HomeTab({super.key, required this.userId});
+  final GlobalKey<_RecommendedDishesState>? dishesKey;
+  const _HomeTab({super.key, required this.userId, this.dishesKey});
 
   List<Map<String, String>> get categories => [
     {'title': Loc.tr('all_categories'), 'path': 'assets/images/soup.jpg'},
@@ -269,7 +275,7 @@ class _HomeTab extends StatelessWidget {
           const SizedBox(height: 24),
           _Title(Loc.tr('for_you')),
           const SizedBox(height: 12),
-          _RecommendedDishes(userId: userId),
+          _RecommendedDishes(key: dishesKey, userId: userId),
           const SizedBox(height: 24),
         ],
       ),
@@ -360,6 +366,11 @@ class _RecommendedDishesState extends State<_RecommendedDishes> {
   bool _hasError = false;
   List<dynamic> _products = [];
   Set<String> _favoriteIds = {};
+
+  void reload() {
+    _loadProducts();
+    _loadFavorites();
+  }
 
   @override
   void initState() {
@@ -489,7 +500,7 @@ class _ProductCard extends StatelessWidget {
           title = (product['title'] ?? 'Title').toString();
         }
 
-        final imageUrl = product['imageUrl'] ?? 'assets/images/soup.jpg';
+        final imageUrl = (product['imageUrl'] ?? 'assets/images/soup.jpg').toString();
         final price = product['price'] ?? 0;
         final sellerName = product['sellerName']?.toString().isNotEmpty == true
             ? product['sellerName'].toString()
@@ -522,22 +533,10 @@ class _ProductCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Stack(
-                  children: [
-                    imageUrl.startsWith('http') 
-                      ? Image.network(
-                          imageUrl, 
-                          height: 180, 
-                          width: double.infinity, 
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            height: 180,
-                            color: Colors.grey.shade300,
-                            child: const Icon(Icons.error),
-                          ),
-                        )
-                      : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), height: 180, width: double.infinity, fit: BoxFit.cover),
-                  ],
+                SizedBox(
+                  height: 180,
+                  width: double.infinity,
+                  child: FirestoreImage(imageUrl: imageUrl, height: 180, width: double.infinity),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),

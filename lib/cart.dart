@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'login.dart';
@@ -25,6 +26,11 @@ class CartScreenState extends State<CartScreen> {
     fetchCart();
   }
 
+  int _roundPrice(dynamic price) {
+    final p = (price ?? 0).toDouble();
+    return (p / 100).round() * 100;
+  }
+
   Future<void> fetchCart() async {
     if (widget.userId == 'guest') return;
     if (mounted) setState(() => _isLoading = true);
@@ -33,7 +39,7 @@ class CartScreenState extends State<CartScreen> {
       if (mounted) {
         setState(() {
           _cartItems = res['items'] ?? [];
-          _total = (res['total'] ?? 0).toDouble();
+          _total = (res['totalAmount'] ?? res['total'] ?? 0).toDouble();
         });
       }
     } catch (e) {
@@ -141,13 +147,28 @@ class CartScreenState extends State<CartScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            TextField(decoration: InputDecoration(labelText: Loc.tr('card_number'))),
+            TextField(
+              decoration: InputDecoration(labelText: Loc.tr('card_number')),
+              keyboardType: TextInputType.number,
+              maxLength: 16,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
-                Expanded(child: TextField(decoration: InputDecoration(labelText: Loc.tr('expiry')))),
+                Expanded(child: TextField(
+                  decoration: InputDecoration(labelText: Loc.tr('expiry')),
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                )),
                 const SizedBox(width: 8),
-                Expanded(child: TextField(decoration: InputDecoration(labelText: Loc.tr('cvv')))),
+                Expanded(child: TextField(
+                  decoration: InputDecoration(labelText: Loc.tr('cvv')),
+                  keyboardType: TextInputType.number,
+                  maxLength: 3,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                )),
               ],
             ),
           ],
@@ -209,7 +230,7 @@ class CartScreenState extends State<CartScreen> {
                                         : const Icon(Icons.fastfood, size: 50),
                                   ),
                                   title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                  subtitle: Text('${product['price']} ₸ x ${item['quantity']}'),
+                                  subtitle: Text('${_roundPrice(product['price'])} ₸ x ${item['quantity']}'),
                                   trailing: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
@@ -238,7 +259,7 @@ class CartScreenState extends State<CartScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(Loc.tr('total'), style: const TextStyle(fontSize: 16, color: Colors.grey)),
-                                  Text('${_total.toInt()} ₸', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange)),
+                                  Text('${_roundPrice(_total)} ₸', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange)),
                                 ],
                               ),
                               ElevatedButton(

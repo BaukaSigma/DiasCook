@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'product_detail.dart';
 import 'localization.dart';
+import 'firestore_image.dart';
 
 class SearchScreen extends StatefulWidget {
   final String userId;
@@ -81,45 +82,88 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
+  // Все возможные написания одной категории (KZ/RU/EN + транслит + ключ)
+  List<String> _allAliasesForKzCat(String kzCat) {
+    final key = _getCatKey(kzCat);
+    return [
+      kzCat,
+      Loc.tr(key),
+      _kzStrings[key] ?? '',
+      _ruStrings[key] ?? '',
+      _enStrings[key] ?? '',
+      _extraAliases[key] ?? '',
+      key,
+    ].where((s) => s.isNotEmpty).map((s) => s.toLowerCase()).toList();
+  }
+
+  static const Map<String, String> _kzStrings = {
+    'breakfast': 'Таң ертеңгілік', 'lunch': 'Түскі ас', 'dinner': 'Кешкі ас',
+    'desserts': 'Тәттілер', 'snacks': 'Тағамдар', 'appetizer': 'Алғашқы тағам',
+    'side_dish': 'Гарнир', 'beverage': 'Сусындар', 'other': 'Басқа',
+  };
+  static const Map<String, String> _ruStrings = {
+    'breakfast': 'Завтрак', 'lunch': 'Обед', 'dinner': 'Ужин',
+    'desserts': 'Десерты', 'snacks': 'Закуски', 'appetizer': 'Первые блюда',
+    'side_dish': 'Гарнир', 'beverage': 'Напитки', 'other': 'Другое',
+  };
+  static const Map<String, String> _enStrings = {
+    'breakfast': 'Breakfast', 'lunch': 'Lunch', 'dinner': 'Dinner',
+    'desserts': 'Desserts', 'snacks': 'Snacks', 'appetizer': 'Appetizers',
+    'side_dish': 'Side Dish', 'beverage': 'Beverages', 'other': 'Other',
+  };
+  // Транслитерированные и прочие варианты
+  static const Map<String, String> _extraAliases = {
+    'breakfast': 'таны ертенгилик',
+    'lunch': 'тускi ас',
+    'dinner': 'кешкi ас',
+    'desserts': 'татiлер',
+    'snacks': 'тагамдар',
+    'appetizer': 'алгашкы тагам',
+    'side_dish': 'гарнир',
+    'beverage': 'сусындар',
+    'other': 'баска',
+  };
+
+  // Возвращает KZ-значение категории по её локализованному отображению
+  String _getKzCategoryFromDisplay(String displayCat) {
+    if (displayCat.isEmpty || displayCat == Loc.tr('all_categories')) return '';
+    final displayLower = displayCat.toLowerCase();
+    for (var kzCat in _categories) {
+      if (_allAliasesForKzCat(kzCat).contains(displayLower)) {
+        return kzCat;
+      }
+    }
+    return displayCat;
+  }
+
   List<dynamic> _getFilteredProducts(String lang) {
     if (_isAISearch) return _allProducts;
 
+    final kzSelectedCat = _getKzCategoryFromDisplay(_selectedCategory);
+
     return _allProducts.where((p) {
       final query = _searchController.text.toLowerCase();
-      
-      String title = (p['title'] ?? '').toString().toLowerCase();
-      String titleKz = (p['titleKz'] ?? '').toString().toLowerCase();
-      String titleRu = (p['titleRu'] ?? '').toString().toLowerCase();
-      String titleEn = (p['titleEn'] ?? '').toString().toLowerCase();
 
-      final matchesQuery = query.isEmpty || 
-          title.contains(query) || 
-          titleKz.contains(query) || 
-          titleRu.contains(query) ||
-          titleEn.contains(query);
-
-      final cat = p['category']?.toString() ?? '';
-      
-      String localizedSelectedCat = _selectedCategory;
-      if (localizedSelectedCat == Loc.tr('all_categories')) {
-        localizedSelectedCat = '';
-      }
+      final matchesQuery = query.isEmpty || [
+        p['title'], p['titleKz'], p['titleRu'], p['titleEn'],
+        p['description'], p['descriptionKz'], p['descriptionRu'],
+        p['category'],
+      ].any((v) => v != null && v.toString().toLowerCase().contains(query));
 
       bool matchesCategory = true;
-      if (localizedSelectedCat.isNotEmpty) {
-        matchesCategory = (cat == localizedSelectedCat);
-        if (!matchesCategory) {
-          for (var c in _categories) {
-             if (Loc.tr(_getCatKey(c)) == localizedSelectedCat) {
-                matchesCategory = (cat == c);
-                break;
-             }
-          }
-        }
+      if (kzSelectedCat.isNotEmpty) {
+        final rawCat = (p['category'] ?? '').toString();
+        // Сравниваем все возможные варианты написания категории
+        matchesCategory = _allAliasesForKzCat(kzSelectedCat).contains(rawCat.toLowerCase());
       }
 
       return matchesQuery && matchesCategory;
     }).toList();
+  }
+
+  int _roundPrice(dynamic price) {
+    final p = (price ?? 0).toDouble();
+    return (p / 100).round() * 100;
   }
 
   String _getCatKey(String cat) {
@@ -243,14 +287,12 @@ class _SearchScreenState extends State<SearchScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Expanded(
-                                        child: imageUrl.startsWith('http')
-                                            ? Image.network(
-                                                imageUrl,
-                                                width: double.infinity,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (c, e, s) => const Icon(Icons.error, size: 50),
-                                              )
-                                            : const Icon(Icons.fastfood, size: 50),
+                                        child: imageUrl.toString().isNotEmpty
+                                            ? FirestoreImage(imageUrl: imageUrl.toString(), width: double.infinity)
+                                            : Container(
+                                                color: Colors.grey.shade200,
+                                                child: const Icon(Icons.fastfood, size: 50, color: Colors.grey),
+                                              ),
                                       ),
                                       Padding(
                                         padding: const EdgeInsets.all(8.0),
@@ -259,7 +301,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                           children: [
                                             Text(title, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                                             const SizedBox(height: 4),
-                                            Text('${p['price']} ₸', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                                            Text('${_roundPrice(p['price'])} ₸', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
                                           ],
                                         ),
                                       ),

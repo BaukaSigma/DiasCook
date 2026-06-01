@@ -194,7 +194,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       Text(Loc.tr('already_have_account'), style: const TextStyle(color: Colors.white)),
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: Text(Loc.tr('login'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, decoration: TextDecoration.underline)),
+                        child: Text(Loc.tr('login'), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                       ),
                     ],
                   ),

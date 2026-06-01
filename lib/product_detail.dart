@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'seller_profile.dart';
 import 'localization.dart';
+import 'firestore_image.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -253,16 +254,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 pinned: true,
                 backgroundColor: Colors.orange.shade700,
                 flexibleSpace: FlexibleSpaceBar(
-                  background: imageUrl.startsWith('http')
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Container(
-                            color: Colors.grey.shade200,
-                            child: const Center(child: Icon(Icons.error, size: 50)),
-                          ),
-                        )
-                      : Image.asset(imageUrl.replaceFirst('assets/assets/', 'assets/'), fit: BoxFit.cover),
+                  background: FirestoreImage(imageUrl: imageUrl, fit: BoxFit.cover),
                 ),
                 leading: Padding(
                   padding: const EdgeInsets.all(8.0),

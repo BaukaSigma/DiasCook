@@ -3,6 +3,7 @@ import 'package:first/api.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'localization.dart';
 import 'product_detail.dart';
+import 'firestore_image.dart';
 
 class SellerProfileScreen extends StatefulWidget {
   final String sellerId;
@@ -175,15 +176,12 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                              }
 
                              return ListTile(
-                               leading: ClipRRect(
-                                 borderRadius: BorderRadius.circular(8),
-                                 child: (p['imageUrl'] ?? '').toString().startsWith('http')
-                                   ? Image.network(
-                                      p['imageUrl'] ?? '',
-                                      width: 50, height: 50, fit: BoxFit.cover,
-                                      errorBuilder: (c, e, s) => const Icon(Icons.fastfood, color: Colors.orange),
-                                   )
-                                   : const Icon(Icons.fastfood, color: Colors.orange),
+                               leading: SizedBox(
+                                 width: 50, height: 50,
+                                 child: ClipRRect(
+                                   borderRadius: BorderRadius.circular(8),
+                                   child: FirestoreImage(imageUrl: (p['imageUrl'] ?? '').toString(), width: 50, height: 50),
+                                 ),
                                ),
                                title: Text(pTitle),
                                subtitle: Text('${p['price']} ₸', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
