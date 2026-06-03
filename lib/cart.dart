@@ -28,7 +28,7 @@ class CartScreenState extends State<CartScreen> {
 
   int _roundPrice(dynamic price) {
     final p = (price ?? 0).toDouble();
-    return (p / 100).round() * 100;
+    return p.toInt();
   }
 
   Future<void> fetchCart() async {
@@ -150,8 +150,8 @@ class CartScreenState extends State<CartScreen> {
             TextField(
               decoration: InputDecoration(labelText: Loc.tr('card_number')),
               keyboardType: TextInputType.number,
-              maxLength: 16,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              maxLength: 19,
+              inputFormatters: [CardNumberInputFormatter()],
             ),
             const SizedBox(height: 8),
             Row(
@@ -159,8 +159,8 @@ class CartScreenState extends State<CartScreen> {
                 Expanded(child: TextField(
                   decoration: InputDecoration(labelText: Loc.tr('expiry')),
                   keyboardType: TextInputType.number,
-                  maxLength: 4,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  maxLength: 5,
+                  inputFormatters: [CardExpiryInputFormatter()],
                 )),
                 const SizedBox(width: 8),
                 Expanded(child: TextField(
@@ -300,3 +300,74 @@ class CartScreenState extends State<CartScreen> {
     );
   }
 }
+
+class CardNumberInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var text = newValue.text;
+    if (newValue.selection.baseOffset == 0) {
+      return newValue;
+    }
+    var buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (text[i] != '/') {
+        buffer.write(text[i]);
+      }
+    }
+    var cleanText = buffer.toString();
+    if (!RegExp(r'^\d*$').hasMatch(cleanText)) {
+      return oldValue;
+    }
+    var formatted = StringBuffer();
+    for (int i = 0; i < cleanText.length; i++) {
+      if (i > 0 && i % 4 == 0) {
+        formatted.write('/');
+      }
+      formatted.write(cleanText[i]);
+    }
+    var string = formatted.toString();
+    return TextEditingValue(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
+
+class CardExpiryInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    var text = newValue.text;
+    if (newValue.selection.baseOffset == 0) {
+      return newValue;
+    }
+    var buffer = StringBuffer();
+    for (int i = 0; i < text.length; i++) {
+      if (text[i] != '/') {
+        buffer.write(text[i]);
+      }
+    }
+    var cleanText = buffer.toString();
+    if (!RegExp(r'^\d*$').hasMatch(cleanText)) {
+      return oldValue;
+    }
+    var formatted = StringBuffer();
+    for (int i = 0; i < cleanText.length; i++) {
+      if (i > 0 && i % 2 == 0) {
+        formatted.write('/');
+      }
+      formatted.write(cleanText[i]);
+    }
+    var string = formatted.toString();
+    return TextEditingValue(
+      text: string,
+      selection: TextSelection.collapsed(offset: string.length),
+    );
+  }
+}
+

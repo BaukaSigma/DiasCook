@@ -102,10 +102,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
     setState(() => _isLoading = true);
 
     final imageUrl = _imageBytes != null ? await _saveImageToFirestore() : 'assets/images/soup.jpg';
+    final rawPrice = int.tryParse(_priceController.text) ?? 0;
+    final roundedPrice = ((rawPrice / 100).round() * 100).toInt();
+
     final productData = {
       'title': _titleController.text.trim(),
       'description': _descController.text.trim(),
-      'price': int.tryParse(_priceController.text) ?? 0,
+      'price': roundedPrice,
       'category': _selectedCategory,
       'location': _locationController.text.trim(),
       'imageUrl': imageUrl,

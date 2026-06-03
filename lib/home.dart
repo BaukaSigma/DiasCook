@@ -622,7 +622,7 @@ class _ProductCard extends StatelessWidget {
 
   int _roundPrice(dynamic price) {
     final p = (price ?? 0).toDouble();
-    return (p / 100).round() * 100;
+    return p.toInt();
   }
 
   Widget _initials(String name) {

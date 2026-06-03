@@ -163,7 +163,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
   int _roundPrice(dynamic price) {
     final p = (price ?? 0).toDouble();
-    return (p / 100).round() * 100;
+    return p.toInt();
   }
 
   String _getCatKey(String cat) {
@@ -246,6 +246,32 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
               ),
+              if (_isAISearch && !_isLoading && filtered.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  color: Colors.orange.shade50,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_awesome, color: Colors.orange, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          lang == 'kz' 
+                              ? 'ИИ іздеу нәтижесі (Gemini)' 
+                              : lang == 'ru' 
+                                  ? 'Результаты ИИ поиска (Gemini)' 
+                                  : 'AI Search Results (Gemini)',
+                          style: TextStyle(
+                            color: Colors.orange.shade900,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
