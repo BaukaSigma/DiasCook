@@ -162,55 +162,30 @@ class ApiService {
     final normalized = _catNorm[rawCat.toLowerCase()];
     if (normalized != null) result['category'] = normalized;
 
-    // Если нет аватарки продавца — генерируем deterministic фото по sellerId/sellerName
+    // Назначаем аватарки только для встроенных демо-продавцов.
+    // Реальные пользователи не получают случайных лиц и отображаются с инициалами.
+    final sellerId = (result['sellerId'] ?? '').toString();
     final logo = (result['sellerLogo'] ?? '').toString();
-    final needsReplacement = logo.isEmpty
-        || logo.contains('pravatar.cc')
-        || logo.contains('randomuser.me')
-        || (!logo.startsWith('http') && !logo.startsWith('assets/') && !logo.startsWith('data:'));
-    if (needsReplacement) {
-      final nameLower = (result['sellerName'] ?? result['sellerId'] ?? 'user').toString().toLowerCase();
-      
-      if (nameLower.contains('данияр') || 
-          nameLower.contains('бақытжан') || 
-          nameLower.contains('бакытжан') || 
-          nameLower.contains('арман') || 
-          nameLower.contains('еркебұлан') ||
-          nameLower.contains('еркебулан') ||
-          nameLower.contains('seller_2') || 
-          nameLower.contains('seller_4') ||
-          nameLower.contains('chef')) {
-        // Мужские аватарки
-        const males = [
-          'assets/images/avatar_arman.jpg',
-          'assets/images/avatar_erkebulan.jpg',
-        ];
-        final idx = nameLower.codeUnits.fold(0, (a, b) => a + b) % males.length;
-        result['sellerLogo'] = males[idx];
-      } else {
-        // Женские аватарки
-        if (nameLower.contains('гүлзира') || nameLower.contains('гульзира')) {
-          result['sellerLogo'] = 'assets/images/avatar_gulzira.jpg';
-        } else if (nameLower.contains('назгүл') || nameLower.contains('назгул')) {
-          result['sellerLogo'] = 'assets/images/avatar_nazgul.jpg';
-        } else if (nameLower.contains('зарина')) {
-          result['sellerLogo'] = 'assets/images/avatar_zarina.jpg';
-        } else if (nameLower.contains('мәдина') || nameLower.contains('мадина')) {
-          result['sellerLogo'] = 'assets/images/avatar_madina.jpg';
-        } else if (nameLower.contains('айгерім') || nameLower.contains('айгерим')) {
-          result['sellerLogo'] = 'assets/images/avatar_aigerim.jpg';
-        } else {
-          const females = [
-            'assets/images/avatar_gulzira.jpg',
-            'assets/images/avatar_nazgul.jpg',
-            'assets/images/avatar_zarina.jpg',
-            'assets/images/avatar_madina.jpg',
-            'assets/images/avatar_aigerim.jpg',
-          ];
-          final idx = nameLower.codeUnits.fold(0, (a, b) => a + b) % females.length;
-          result['sellerLogo'] = females[idx];
-        }
-      }
+    
+    if (sellerId == 'gulzira') {
+      result['sellerLogo'] = 'assets/images/avatar_gulzira.jpg';
+    } else if (sellerId == 'nazgul') {
+      result['sellerLogo'] = 'assets/images/avatar_nazgul.jpg';
+    } else if (sellerId == 'zarina') {
+      result['sellerLogo'] = 'assets/images/avatar_zarina.jpg';
+    } else if (sellerId == 'madina') {
+      result['sellerLogo'] = 'assets/images/avatar_madina.jpg';
+    } else if (sellerId == 'aigerim') {
+      result['sellerLogo'] = 'assets/images/avatar_aigerim.jpg';
+    } else if (sellerId == 'arman') {
+      result['sellerLogo'] = 'assets/images/avatar_arman.jpg';
+    } else if (sellerId == 'chef_erkebulan') {
+      result['sellerLogo'] = 'assets/images/avatar_erkebulan.jpg';
+    } else if (logo.isEmpty || 
+               logo.contains('pravatar.cc') || 
+               logo.contains('randomuser.me') || 
+               (!logo.startsWith('http') && !logo.startsWith('assets/') && !logo.startsWith('data:'))) {
+      result['sellerLogo'] = '';
     }
     // Если адрес пустой — ставим Астана
     final loc = (result['location'] ?? '').toString();

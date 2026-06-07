@@ -140,42 +140,82 @@ class CartScreenState extends State<CartScreen> {
   }
 
   Future<bool?> _showCardPaymentDialog() async {
+    final formKey = GlobalKey<FormState>();
     return showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         title: Text(Loc.tr('card')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: InputDecoration(labelText: Loc.tr('card_number')),
-              keyboardType: TextInputType.number,
-              maxLength: 19,
-              inputFormatters: [CardNumberInputFormatter()],
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(child: TextField(
-                  decoration: InputDecoration(labelText: Loc.tr('expiry')),
-                  keyboardType: TextInputType.number,
-                  maxLength: 5,
-                  inputFormatters: [CardExpiryInputFormatter()],
-                )),
-                const SizedBox(width: 8),
-                Expanded(child: TextField(
-                  decoration: InputDecoration(labelText: Loc.tr('cvv')),
-                  keyboardType: TextInputType.number,
-                  maxLength: 3,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                )),
-              ],
-            ),
-          ],
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                decoration: InputDecoration(labelText: Loc.tr('card_number')),
+                keyboardType: TextInputType.number,
+                maxLength: 19,
+                inputFormatters: [CardNumberInputFormatter()],
+                validator: (value) {
+                  if (value == null || value.trim().length < 19) {
+                    return Loc.tr('invalid_card_no');
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      decoration: InputDecoration(labelText: Loc.tr('expiry')),
+                      keyboardType: TextInputType.number,
+                      maxLength: 5,
+                      inputFormatters: [CardExpiryInputFormatter()],
+                      validator: (value) {
+                        if (value == null || value.length < 5) {
+                          return Loc.tr('invalid_expiry');
+                        }
+                        final parts = value.split('/');
+                        if (parts.length != 2) return Loc.tr('invalid_expiry');
+                        final month = int.tryParse(parts[0]);
+                        if (month == null || month < 1 || month > 12) {
+                          return Loc.tr('invalid_month');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextFormField(
+                      decoration: InputDecoration(labelText: Loc.tr('cvv')),
+                      keyboardType: TextInputType.number,
+                      maxLength: 3,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      validator: (value) {
+                        if (value == null || value.length < 3) {
+                          return Loc.tr('invalid_cvv');
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(Loc.tr('cancel'))),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: Text(Loc.tr('save'))),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context, true);
+              }
+            },
+            child: Text(Loc.tr('pay_button')),
+          ),
         ],
       ),
     );
@@ -311,20 +351,11 @@ class CardNumberInputFormatter extends TextInputFormatter {
     if (newValue.selection.baseOffset == 0) {
       return newValue;
     }
-    var buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      if (text[i] != '/') {
-        buffer.write(text[i]);
-      }
-    }
-    var cleanText = buffer.toString();
-    if (!RegExp(r'^\d*$').hasMatch(cleanText)) {
-      return oldValue;
-    }
+    var cleanText = text.replaceAll(RegExp(r'\D'), '');
     var formatted = StringBuffer();
     for (int i = 0; i < cleanText.length; i++) {
       if (i > 0 && i % 4 == 0) {
-        formatted.write('/');
+        formatted.write(' ');
       }
       formatted.write(cleanText[i]);
     }
@@ -346,16 +377,7 @@ class CardExpiryInputFormatter extends TextInputFormatter {
     if (newValue.selection.baseOffset == 0) {
       return newValue;
     }
-    var buffer = StringBuffer();
-    for (int i = 0; i < text.length; i++) {
-      if (text[i] != '/') {
-        buffer.write(text[i]);
-      }
-    }
-    var cleanText = buffer.toString();
-    if (!RegExp(r'^\d*$').hasMatch(cleanText)) {
-      return oldValue;
-    }
+    var cleanText = text.replaceAll(RegExp(r'\D'), '');
     var formatted = StringBuffer();
     for (int i = 0; i < cleanText.length; i++) {
       if (i > 0 && i % 2 == 0) {

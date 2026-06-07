@@ -3,6 +3,7 @@ import 'api.dart';
 import 'login.dart';
 import 'home.dart';
 import 'localization.dart';
+import 'forgot_password.dart';
 
 class RegistrationScreen extends StatefulWidget {
   const RegistrationScreen({super.key});
@@ -44,6 +45,13 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     if (name.isEmpty || email.isEmpty || password.isEmpty || phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(Loc.tr('error'))),
+      );
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(Loc.tr('password_requirements'))),
       );
       return;
     }
