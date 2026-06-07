@@ -29,7 +29,7 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isAISearch = false;
 
   final List<String> _categories = [
-    'Таң ертеңгілік', 'Түскі ас', 'Кешкі ас', 'Тәттілер', 'Тағамдар', 'Алғашқы тағам', 'Гарнир', 'Сусындар', 'Басқа'
+    'Таңғы астар', 'Түскі ас', 'Кешкі ас', 'Тәттілер', 'Гарнир', 'Сусындар'
   ];
 
   @override
@@ -97,19 +97,16 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   static const Map<String, String> _kzStrings = {
-    'breakfast': 'Таң ертеңгілік', 'lunch': 'Түскі ас', 'dinner': 'Кешкі ас',
-    'desserts': 'Тәттілер', 'snacks': 'Тағамдар', 'appetizer': 'Алғашқы тағам',
-    'side_dish': 'Гарнир', 'beverage': 'Сусындар', 'other': 'Басқа',
+    'breakfast': 'Таңғы астар', 'lunch': 'Түскі ас', 'dinner': 'Кешкі ас',
+    'desserts': 'Тәттілер', 'side_dish': 'Гарнир', 'beverage': 'Сусындар',
   };
   static const Map<String, String> _ruStrings = {
     'breakfast': 'Завтрак', 'lunch': 'Обед', 'dinner': 'Ужин',
-    'desserts': 'Десерты', 'snacks': 'Закуски', 'appetizer': 'Первые блюда',
-    'side_dish': 'Гарнир', 'beverage': 'Напитки', 'other': 'Другое',
+    'desserts': 'Десерты', 'side_dish': 'Гарнир', 'beverage': 'Напитки',
   };
   static const Map<String, String> _enStrings = {
     'breakfast': 'Breakfast', 'lunch': 'Lunch', 'dinner': 'Dinner',
-    'desserts': 'Desserts', 'snacks': 'Snacks', 'appetizer': 'Appetizers',
-    'side_dish': 'Side Dish', 'beverage': 'Beverages', 'other': 'Other',
+    'desserts': 'Desserts', 'side_dish': 'Side Dish', 'beverage': 'Beverages',
   };
   // Транслитерированные и прочие варианты
   static const Map<String, String> _extraAliases = {
@@ -117,11 +114,8 @@ class _SearchScreenState extends State<SearchScreen> {
     'lunch': 'тускi ас',
     'dinner': 'кешкi ас',
     'desserts': 'татiлер',
-    'snacks': 'тагамдар',
-    'appetizer': 'алгашкы тагам',
     'side_dish': 'гарнир',
     'beverage': 'сусындар',
-    'other': 'баска',
   };
 
   // Возвращает KZ-значение категории по её локализованному отображению
@@ -168,12 +162,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
   String _getCatKey(String cat) {
     switch (cat) {
+      case 'Таңғы астар':
       case 'Таң ертеңгілік': return 'breakfast';
       case 'Түскі ас': return 'lunch';
       case 'Кешкі ас': return 'dinner';
       case 'Тәттілер': return 'desserts';
-      case 'Тағамдар': return 'snacks';
-      case 'Алғашқы тағам': return 'appetizer';
       case 'Гарнир': return 'side_dish';
       case 'Сусындар': return 'beverage';
       default: return 'other';

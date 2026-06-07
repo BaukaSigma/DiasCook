@@ -166,11 +166,8 @@ class _HomeTab extends StatelessWidget {
     {'title': Loc.tr('lunch'), 'path': 'assets/images/manty.jpg'},
     {'title': Loc.tr('dinner'), 'path': 'assets/images/kuirdak.jpg'},
     {'title': Loc.tr('desserts'), 'path': 'assets/images/dessert.jpg'},
-    {'title': Loc.tr('snacks'), 'path': 'assets/images/shrimp_pasta.jpg'},
-    {'title': Loc.tr('appetizer'), 'path': 'assets/images/borsh.jpg'},
     {'title': Loc.tr('side_dish'), 'path': 'assets/images/pasta.jpg'},
     {'title': Loc.tr('beverage'), 'path': 'assets/images/ceremony.jpg'},
-    {'title': Loc.tr('other'), 'path': 'assets/images/national.jpg'},
   ];
 
   @override

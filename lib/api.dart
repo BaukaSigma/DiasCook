@@ -50,45 +50,113 @@ class ApiService {
 
   // Нормализация категорий (транслит → правильный KZ)
   static const Map<String, String> _catNorm = {
-    'таңертеңгілік': 'Таң ертеңгілік',
-    'таны ертенгилик': 'Таң ертеңгілік',
-    'тан ертенгiлiк': 'Таң ертеңгілік',
-    'тан ертенгилик': 'Таң ертеңгілік',
-    'breakfast': 'Таң ертеңгілік',
-    'завтрак': 'Таң ертеңгілік',
+    // Таңғы астар
+    'таңертеңгілік': 'Таңғы астар',
+    'таны ертенгилик': 'Таңғы астар',
+    'тан ертенгiлiк': 'Таңғы астар',
+    'тан ертенгилик': 'Таңғы астар',
+    'таңғы астар': 'Таңғы астар',
+    'breakfast': 'Таңғы астар',
+    'завтрак': 'Таңғы астар',
+    
+    // Түскі ас
     'тускi ас': 'Түскі ас',
     'тусkі ас': 'Түскі ас',
     'обед': 'Түскі ас',
     'lunch': 'Түскі ас',
+    'chicken': 'Түскі ас',
+    'pasta': 'Түскі ас',
+    'seafood': 'Түскі ас',
+    'vegetarian': 'Түскі ас',
+    'vegan': 'Түскі ас',
+    'starter': 'Түскі ас',
+    'miscellaneous': 'Түскі ас',
+    'тагамдар': 'Түскі ас',
+    'закуски': 'Түскі ас',
+    'snacks': 'Түскі ас',
+    'алгашкы тагам': 'Түскі ас',
+    'первые блюда': 'Түскі ас',
+    'appetizer': 'Түскі ас',
+    'appetizers': 'Түскі ас',
+    'баска': 'Түскі ас',
+    'другое': 'Түскі ас',
+    'other': 'Түскі ас',
+    
+    // Кешкі ас
     'кешкi ас': 'Кешкі ас',
     'ужин': 'Кешкі ас',
     'dinner': 'Кешкі ас',
+    'beef': 'Кешкі ас',
+    'pork': 'Кешкі ас',
+    'lamb': 'Кешкі ас',
+    'goat': 'Кешкі ас',
+    
+    // Тәттілер
     'татiлер': 'Тәттілер',
+    'тәттілер': 'Тәттілер',
     'десерты': 'Тәттілер',
     'desserts': 'Тәттілер',
     'dessert': 'Тәттілер',
-    'тагамдар': 'Тағамдар',
-    'закуски': 'Тағамдар',
-    'snacks': 'Тағамдар',
-    'алгашкы тагам': 'Алғашқы тағам',
-    'первые блюда': 'Алғашқы тағам',
-    'appetizer': 'Алғашқы тағам',
-    'appetizers': 'Алғашқы тағам',
+    
+    // Гарнир
     'гарнир': 'Гарнир',
     'side dish': 'Гарнир',
     'side_dish': 'Гарнир',
+    'side': 'Гарнир',
+    
+    // Сусындар
     'сусындар': 'Сусындар',
     'напитки': 'Сусындар',
     'beverage': 'Сусындар',
     'beverages': 'Сусындар',
-    'баска': 'Басқа',
-    'другое': 'Басқа',
-    'other': 'Басқа',
   };
+
+  static List<dynamic> _cleanStepsList(List<dynamic>? raw) {
+    if (raw == null) return [];
+    final cleaned = <String>[];
+    for (var item in raw) {
+      String step = item.toString().trim();
+      if (step.isEmpty) continue;
+      
+      final prefixRegex = RegExp(
+        r'^('
+        r'(?:қадам|кадам|step|этап)\s*\d+\s*[\.\:\-\–\—\s]*|'
+        r'\d+\s*(?:қадам|кадам|step|этап)\s*[\.\:\-\–\—\s]*|'
+        r'\d+[\.\)\:\-\–\—\s]+\s*'
+        r')',
+        caseSensitive: false,
+      );
+      
+      while (prefixRegex.hasMatch(step)) {
+        step = step.replaceFirst(prefixRegex, '').trim();
+      }
+      
+      if (step.isNotEmpty) {
+        step = step[0].toUpperCase() + step.substring(1);
+        cleaned.add(step);
+      }
+    }
+    return cleaned;
+  }
 
   // --- Хелпер: обогащение продукта (аватарка, адрес, категория) ---
   static Map<String, dynamic> _enrichProduct(String id, Map<String, dynamic> data) {
     final result = Map<String, dynamic>.from({'_id': id, ...data});
+
+    // Clean steps lists if they exist
+    if (result['steps'] is List) {
+      result['steps'] = _cleanStepsList(result['steps']);
+    }
+    if (result['stepsRu'] is List) {
+      result['stepsRu'] = _cleanStepsList(result['stepsRu']);
+    }
+    if (result['stepsKz'] is List) {
+      result['stepsKz'] = _cleanStepsList(result['stepsKz']);
+    }
+    if (result['stepsEn'] is List) {
+      result['stepsEn'] = _cleanStepsList(result['stepsEn']);
+    }
+
     // Нормализуем категорию
     final rawCat = (result['category'] ?? '').toString();
     final normalized = _catNorm[rawCat.toLowerCase()];
@@ -563,9 +631,145 @@ ${jsonEncode(simplifiedProducts)}
         }
       }
       print('Product migration complete.');
+      
+      // Start AI translations in background so we don't block startup
+      _runAiTranslations(snapshot.docs);
     } catch (e) {
       print('Product migration error: $e');
     }
+  }
+
+  static Future<void> _runAiTranslations(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
+    try {
+      int translatedCount = 0;
+      for (var doc in docs) {
+        final data = doc.data();
+        final id = doc.id;
+        
+        if (data['isTranslatedByAI'] != true) {
+          print('Translating product $id ($translatedCount/5) with Gemini in background...');
+          final translations = await translateRecipeWithGemini(data);
+          if (translations != null) {
+            final updates = <String, dynamic>{
+              'titleRu': translations['titleRu'] ?? data['titleRu'],
+              'titleKz': translations['titleKz'] ?? data['titleKz'],
+              'descriptionRu': translations['descriptionRu'] ?? data['descriptionRu'],
+              'descriptionKz': translations['descriptionKz'] ?? data['descriptionKz'],
+              'ingredientsRu': translations['ingredientsRu'] ?? data['ingredientsRu'],
+              'ingredientsKz': translations['ingredientsKz'] ?? data['ingredientsKz'],
+              'stepsRu': translations['stepsRu'] ?? data['stepsRu'],
+              'stepsKz': translations['stepsKz'] ?? data['stepsKz'],
+              'isTranslatedByAI': true,
+            };
+            
+            if (data['title'] == null || data['title'].toString().isEmpty) {
+              updates['title'] = translations['titleRu'];
+            }
+            if (data['description'] == null || data['description'].toString().isEmpty) {
+              updates['description'] = translations['descriptionRu'];
+            }
+            if (data['ingredients'] == null || (data['ingredients'] as List).isEmpty) {
+              updates['ingredients'] = translations['ingredientsRu'];
+            }
+            if (data['steps'] == null || (data['steps'] as List).isEmpty) {
+              updates['steps'] = translations['stepsRu'];
+            }
+            
+            await _db.collection('products').doc(id).update(updates);
+            print('Successfully translated product $id');
+            translatedCount++;
+            if (translatedCount >= 5) {
+              break;
+            }
+          }
+        }
+      }
+    } catch (e) {
+      print('AI Translation background task error: $e');
+    }
+  }
+
+  static Future<Map<String, dynamic>?> translateRecipeWithGemini(Map<String, dynamic> recipe) async {
+    try {
+      final titleRu = recipe['titleRu'] ?? recipe['title'] ?? '';
+      final titleKz = recipe['titleKz'] ?? '';
+      final titleEn = recipe['titleEn'] ?? '';
+      
+      final descriptionRu = recipe['descriptionRu'] ?? recipe['description'] ?? '';
+      final descriptionKz = recipe['descriptionKz'] ?? '';
+      final descriptionEn = recipe['descriptionEn'] ?? '';
+      
+      final ingredients = recipe['ingredients'] is List ? List<dynamic>.from(recipe['ingredients']) : [];
+      final ingredientsRu = recipe['ingredientsRu'] is List ? List<dynamic>.from(recipe['ingredientsRu']) : ingredients;
+      final ingredientsEn = recipe['ingredientsEn'] is List ? List<dynamic>.from(recipe['ingredientsEn']) : [];
+      
+      final steps = recipe['steps'] is List ? List<dynamic>.from(recipe['steps']) : [];
+      final stepsRu = recipe['stepsRu'] is List ? List<dynamic>.from(recipe['stepsRu']) : steps;
+      final stepsEn = recipe['stepsEn'] is List ? List<dynamic>.from(recipe['stepsEn']) : [];
+
+      final prompt = '''
+You are a professional chef and translator fluent in English, Russian, and Kazakh.
+Translate the following recipe details into high-quality culinary Russian and Kazakh.
+Make sure the Kazakh translations are natural and sound like authentic Kazakh recipe terms, NOT literal machine translations (e.g. do NOT translate "hot pot" as "ыстық ыдыс", use "бұқтырылған ет" or "ыстық тағам"; do NOT translate "dip" as "батырыңыз", use "тұздық" or appropriate culinary term; translate cooking terms naturally).
+
+Current Recipe Details:
+- Title (EN): $titleEn
+- Title (RU): $titleRu
+- Title (KZ): $titleKz
+- Description (EN): $descriptionEn
+- Description (RU): $descriptionRu
+- Description (KZ): $descriptionKz
+- Ingredients (EN): ${ingredientsEn.join(', ')}
+- Ingredients (RU): ${ingredientsRu.join(', ')}
+- Steps (EN): ${stepsEn.join(' | ')}
+- Steps (RU): ${stepsRu.join(' | ')}
+
+Return the translations in a clean JSON format matching the following schema exactly (without any markdown codeblock formatting, just raw JSON string):
+{
+  "titleRu": "Natural Russian Title",
+  "titleKz": "Натуралды қазақша атауы",
+  "descriptionRu": "Natural Russian Description",
+  "descriptionKz": "Натуралды қазақша сипаттамасы",
+  "ingredientsRu": ["Ingredient 1 in RU", "Ingredient 2 in RU"],
+  "ingredientsKz": ["Ingredient 1 in KZ", "Ingredient 2 in KZ"],
+  "stepsRu": ["Step 1 in RU", "Step 2 in RU"],
+  "stepsKz": ["Step 1 in KZ", "Step 2 in KZ"]
+}
+''';
+
+      final url = Uri.parse(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_geminiApiKey'
+      );
+      
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [
+            {
+              'parts': [
+                {'text': prompt}
+              ]
+            }
+          ],
+          'generationConfig': {
+            'responseMimeType': 'application/json',
+          }
+        }),
+      ).timeout(const Duration(seconds: 15));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final textResponse = data['candidates']?[0]?['content']?[0]?['parts']?[0]?['text']?.toString() ?? '';
+        final parsed = jsonDecode(textResponse.trim());
+        if (parsed is Map<String, dynamic>) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      print('Gemini Recipe Translation Error: $e');
+    }
+    return null;
   }
 
   static List<String> _splitStringToSteps(String text) {
@@ -669,13 +873,13 @@ ${jsonEncode(simplifiedProducts)}
       return 'https://images.unsplash.com/photo-1577906096429-f73df2c3e273?w=500&auto=format&fit=crop';
     }
     if (t.contains('пюре') || t.contains('картоп')) {
-      return 'https://images.unsplash.com/photo-1608797178974-15b35a61d121?w=500&auto=format&fit=crop';
+      return 'https://images.unsplash.com/photo-1621841957884-1210fe19d66d?w=500&auto=format&fit=crop';
     }
     if (t.contains('гречка')) {
-      return 'https://images.unsplash.com/photo-1599599810769-bcde5a160d32?w=500&auto=format&fit=crop';
+      return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500&auto=format&fit=crop';
     }
     if (t.contains('рис') || t.contains('күріш')) {
-      return 'https://images.unsplash.com/photo-1536304997881-a372c179924b?w=500&auto=format&fit=crop';
+      return 'https://images.unsplash.com/photo-1516685018646-549198525c1b?w=500&auto=format&fit=crop';
     }
     if (t.contains('карбонара') || t.contains('паста') || t.contains('pasta') || t.contains('спагетти')) {
       return 'assets/images/pasta.jpg';

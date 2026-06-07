@@ -20,7 +20,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _priceController = TextEditingController();
   final _locationController = TextEditingController();
 
-  String _selectedCategory = 'Таң ертеңгілік';
+  String _selectedCategory = 'Таңғы астар';
   bool _isLoading = false;
   String _sellerName = '';
   String _sellerLogo = '';
@@ -28,14 +28,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
   String? _imageFileName;
 
   final List<String> _categories = [
-    'Таң ертеңгілік',
+    'Таңғы астар',
     'Түскі ас',
     'Кешкі ас',
     'Тәттілер',
-    'Алғашқы тағам',
     'Гарнир',
     'Сусындар',
-    'Басқа',
   ];
 
   @override

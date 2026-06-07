@@ -442,7 +442,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _showContactDialog(context, sellerName, sellerLogo, instagram, phone, fullAddress),
-                    icon: const Icon(Icons.chat_bubble),
+                    icon: const Icon(Icons.contact_phone),
                     label: Text(Loc.tr('contact_seller')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange.shade800,
