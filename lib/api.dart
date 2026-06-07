@@ -616,106 +616,123 @@ ${jsonEncode(simplifiedProducts)}
 
   static Future<void> _runAiTranslations(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
     try {
-      int translatedCount = 0;
-      for (var doc in docs) {
+      final untranslated = docs.where((doc) {
         final data = doc.data();
-        final id = doc.id;
+        final titleKz = (data['titleKz'] ?? '').toString().toLowerCase();
+        final descKz = (data['descriptionKz'] ?? '').toString().toLowerCase();
         
-        if (data['isTranslatedByAI'] != true) {
-          print('Translating product $id ($translatedCount/5) with Gemini in background...');
-          final translations = await translateRecipeWithGemini(data);
-          if (translations != null) {
-            final updates = <String, dynamic>{
-              'titleRu': translations['titleRu'] ?? data['titleRu'],
-              'titleKz': translations['titleKz'] ?? data['titleKz'],
-              'descriptionRu': translations['descriptionRu'] ?? data['descriptionRu'],
-              'descriptionKz': translations['descriptionKz'] ?? data['descriptionKz'],
-              'ingredientsRu': translations['ingredientsRu'] ?? data['ingredientsRu'],
-              'ingredientsKz': translations['ingredientsKz'] ?? data['ingredientsKz'],
-              'stepsRu': translations['stepsRu'] ?? data['stepsRu'],
-              'stepsKz': translations['stepsKz'] ?? data['stepsKz'],
-              'isTranslatedByAI': true,
-            };
-            
-            if (data['title'] == null || data['title'].toString().isEmpty) {
-              updates['title'] = translations['titleRu'];
-            }
-            if (data['description'] == null || data['description'].toString().isEmpty) {
-              updates['description'] = translations['descriptionRu'];
-            }
-            if (data['ingredients'] == null || (data['ingredients'] as List).isEmpty) {
-              updates['ingredients'] = translations['ingredientsRu'];
-            }
-            if (data['steps'] == null || (data['steps'] as List).isEmpty) {
-              updates['steps'] = translations['stepsRu'];
-            }
-            
-            await _db.collection('products').doc(id).update(updates);
-            print('Successfully translated product $id');
-            translatedCount++;
-            if (translatedCount >= 5) {
-              break;
+        final hasMachineTranslation = titleKz.contains('ыстық ыдыс') || 
+                                     descKz.contains('ыстық ыдыс') ||
+                                     titleKz.contains('батырыңыз') ||
+                                     descKz.contains('батырыңыз');
+                                     
+        return data['isTranslatedByAI'] != true || hasMachineTranslation;
+      }).toList();
+
+      if (untranslated.isEmpty) {
+        print('All products are already translated by Gemini.');
+        return;
+      }
+
+      print('Starting Gemini batch translations for ${untranslated.length} products...');
+
+      final batchSize = 5;
+      for (int i = 0; i < untranslated.length; i += batchSize) {
+        final endIdx = i + batchSize > untranslated.length ? untranslated.length : i + batchSize;
+        final batch = untranslated.sublist(i, endIdx);
+        
+        final batchData = batch.map((doc) {
+          final data = doc.data();
+          return {
+            'id': doc.id,
+            'titleEn': data['titleEn'] ?? '',
+            'titleRu': data['titleRu'] ?? data['title'] ?? '',
+            'descriptionEn': data['descriptionEn'] ?? '',
+            'ingredientsEn': data['ingredientsEn'] ?? data['ingredients'] ?? [],
+            'stepsEn': data['stepsEn'] ?? data['steps'] ?? [],
+          };
+        }).toList();
+
+        final prompt = '''
+You are a professional chef and translator fluent in English, Russian, and Kazakh.
+Translate the following batch of ${batch.length} recipes into high-quality culinary Russian and Kazakh.
+Make sure the Kazakh translations are natural and sound like authentic Kazakh recipe terms, NOT literal machine translations (e.g. do NOT translate "hot pot" as "ыстық ыдыс", use "бұқтырылған ет" or "сорпа/ыстық тағам" or appropriate term; do NOT translate "dip" as "батырыңыз" or "батыру", use "тұздық" or "соус"; translate cooking terms naturally).
+For example, "Beans and Sausage Hotpot" should translate in Kazakh to something natural like "Бұршақ қосылған шұжық бұқтырмасы" or similar, NOT "Бұршақ және шұжық ыстық ыдыс".
+
+Recipes to translate:
+${jsonEncode(batchData)}
+
+Return the translations in a JSON array matching the following schema exactly (without any markdown formatting or codeblocks):
+[
+  {
+    "id": "recipe_id",
+    "titleRu": "Natural Russian Title",
+    "titleKz": "Натуралды қазақша атауы",
+    "descriptionRu": "Natural Russian Description",
+    "descriptionKz": "Натуралды қазақша сипаттамасы",
+    "ingredientsRu": ["Ingredient 1 in RU", "Ingredient 2 in RU"],
+    "ingredientsKz": ["Ingredient 1 in KZ", "Ingredient 2 in KZ"],
+    "stepsRu": ["Step 1 in RU", "Step 2 in RU"],
+    "stepsKz": ["Step 1 in KZ", "Step 2 in KZ"]
+  }
+]
+''';
+
+        print('Sending batch ${i ~/ batchSize + 1} to Gemini...');
+        final translations = await _callGeminiBatch(prompt);
+        if (translations != null && translations is List) {
+          for (var t in translations) {
+            if (t is Map) {
+              final id = t['id']?.toString();
+              if (id == null) continue;
+              final origDoc = batch.firstWhere((doc) => doc.id == id);
+              final origData = origDoc.data();
+
+              final updates = <String, dynamic>{
+                'titleRu': t['titleRu'] ?? origData['titleRu'],
+                'titleKz': t['titleKz'] ?? origData['titleKz'],
+                'descriptionRu': t['descriptionRu'] ?? origData['descriptionRu'],
+                'descriptionKz': t['descriptionKz'] ?? origData['descriptionKz'],
+                'ingredientsRu': t['ingredientsRu'] ?? origData['ingredientsRu'],
+                'ingredientsKz': t['ingredientsKz'] ?? origData['ingredientsKz'],
+                'stepsRu': t['stepsRu'] ?? origData['stepsRu'],
+                'stepsKz': t['stepsKz'] ?? origData['stepsKz'],
+                'isTranslatedByAI': true,
+              };
+
+              if (origData['title'] == null || origData['title'].toString().isEmpty || origData['title'] == origData['titleEn']) {
+                updates['title'] = t['titleRu'];
+              }
+              if (origData['description'] == null || origData['description'].toString().isEmpty || origData['description'] == origData['descriptionEn']) {
+                updates['description'] = t['descriptionRu'];
+              }
+              if (origData['ingredients'] == null || (origData['ingredients'] as List).isEmpty) {
+                updates['ingredients'] = t['ingredientsRu'];
+              }
+              if (origData['steps'] == null || (origData['steps'] as List).isEmpty) {
+                updates['steps'] = t['stepsRu'];
+              }
+
+              await _db.collection('products').doc(id).update(updates);
+              print('  Updated product $id -> ${t['titleKz']}');
             }
           }
         }
+
+        // Wait between batches to respect rate limits
+        await Future.delayed(const Duration(seconds: 8));
       }
+      print('Batch translation task completed.');
     } catch (e) {
-      print('AI Translation background task error: $e');
+      print('AI Batch Translation background task error: $e');
     }
   }
 
-  static Future<Map<String, dynamic>?> translateRecipeWithGemini(Map<String, dynamic> recipe) async {
+  static Future<dynamic> _callGeminiBatch(String prompt) async {
     try {
-      final titleRu = recipe['titleRu'] ?? recipe['title'] ?? '';
-      final titleKz = recipe['titleKz'] ?? '';
-      final titleEn = recipe['titleEn'] ?? '';
-      
-      final descriptionRu = recipe['descriptionRu'] ?? recipe['description'] ?? '';
-      final descriptionKz = recipe['descriptionKz'] ?? '';
-      final descriptionEn = recipe['descriptionEn'] ?? '';
-      
-      final ingredients = recipe['ingredients'] is List ? List<dynamic>.from(recipe['ingredients']) : [];
-      final ingredientsRu = recipe['ingredientsRu'] is List ? List<dynamic>.from(recipe['ingredientsRu']) : ingredients;
-      final ingredientsEn = recipe['ingredientsEn'] is List ? List<dynamic>.from(recipe['ingredientsEn']) : [];
-      
-      final steps = recipe['steps'] is List ? List<dynamic>.from(recipe['steps']) : [];
-      final stepsRu = recipe['stepsRu'] is List ? List<dynamic>.from(recipe['stepsRu']) : steps;
-      final stepsEn = recipe['stepsEn'] is List ? List<dynamic>.from(recipe['stepsEn']) : [];
-
-      final prompt = '''
-You are a professional chef and translator fluent in English, Russian, and Kazakh.
-Translate the following recipe details into high-quality culinary Russian and Kazakh.
-Make sure the Kazakh translations are natural and sound like authentic Kazakh recipe terms, NOT literal machine translations (e.g. do NOT translate "hot pot" as "ыстық ыдыс", use "бұқтырылған ет" or "ыстық тағам"; do NOT translate "dip" as "батырыңыз", use "тұздық" or appropriate culinary term; translate cooking terms naturally).
-
-Current Recipe Details:
-- Title (EN): $titleEn
-- Title (RU): $titleRu
-- Title (KZ): $titleKz
-- Description (EN): $descriptionEn
-- Description (RU): $descriptionRu
-- Description (KZ): $descriptionKz
-- Ingredients (EN): ${ingredientsEn.join(', ')}
-- Ingredients (RU): ${ingredientsRu.join(', ')}
-- Steps (EN): ${stepsEn.join(' | ')}
-- Steps (RU): ${stepsRu.join(' | ')}
-
-Return the translations in a clean JSON format matching the following schema exactly (without any markdown codeblock formatting, just raw JSON string):
-{
-  "titleRu": "Natural Russian Title",
-  "titleKz": "Натуралды қазақша атауы",
-  "descriptionRu": "Natural Russian Description",
-  "descriptionKz": "Натуралды қазақша сипаттамасы",
-  "ingredientsRu": ["Ingredient 1 in RU", "Ingredient 2 in RU"],
-  "ingredientsKz": ["Ingredient 1 in KZ", "Ingredient 2 in KZ"],
-  "stepsRu": ["Step 1 in RU", "Step 2 in RU"],
-  "stepsKz": ["Step 1 in KZ", "Step 2 in KZ"]
-}
-''';
-
       final url = Uri.parse(
         'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_geminiApiKey'
       );
-      
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -731,18 +748,17 @@ Return the translations in a clean JSON format matching the following schema exa
             'responseMimeType': 'application/json',
           }
         }),
-      ).timeout(const Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final textResponse = data['candidates']?[0]?['content']?[0]?['parts']?[0]?['text']?.toString() ?? '';
-        final parsed = jsonDecode(textResponse.trim());
-        if (parsed is Map<String, dynamic>) {
-          return parsed;
-        }
+        return jsonDecode(textResponse.trim());
+      } else {
+        print('Gemini API Error: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Gemini Recipe Translation Error: $e');
+      print('Gemini Batch API Call Error: $e');
     }
     return null;
   }
