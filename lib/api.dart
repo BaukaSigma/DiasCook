@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'mock_data.dart';
+import 'package:first/mock_data.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -607,8 +607,8 @@ ${jsonEncode(simplifiedProducts)}
       }
       print('Product migration complete.');
       
-      // Start AI translations in background so we don't block startup
-      _runAiTranslations(snapshot.docs);
+      // Gemini API is blocked, translations are pre-migrated statically.
+      // _runAiTranslations(snapshot.docs);
     } catch (e) {
       print('Product migration error: $e');
     }
@@ -773,151 +773,27 @@ Return the translations in a JSON array matching the following schema exactly (w
     return blocks.where((s) => s.length > 5).toList();
   }
 
-  static const List<String> _fallbackFoodImages = [
-    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1496412705862-c00dbd556d45?w=500&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=500&auto=format&fit=crop',
-  ];
-
   static String _getUniqueFoodImage(String title, String category, String id) {
-    final t = title.toLowerCase();
-
-    if (t.contains('палау') || t.contains('плов')) {
-      return 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('бешбармақ') || t.contains('бешбармак') || t.contains('беш')) {
-      return 'https://images.unsplash.com/photo-1608897013039-887f2118cd57?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('манты') || t.contains('manti')) {
-      return 'assets/images/manty.jpg';
-    }
-    if (t.contains('бауырсақ') || t.contains('баурсак')) {
-      return 'assets/images/baursak.jpg';
-    }
-    if (t.contains('қуырдақ') || t.contains('куырдак')) {
-      return 'assets/images/kuirdak.jpg';
-    }
-    if (t.contains('самса')) {
-      return 'https://images.unsplash.com/photo-1601050690597-df056fb4ce78?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('шашлык') || t.contains('кәуап') || t.contains('кавап')) {
-      return 'https://images.unsplash.com/photo-1529193591184-b1d58069ecdd?w=500&auto=format&fit=crop';
-    }
-
-    if (t.contains('борщ')) {
-      return 'assets/images/borsh.jpg';
-    }
-    if (t.contains('солянка')) {
-      return 'https://images.unsplash.com/photo-1547592180-85f173990554?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('асқабақ') || t.contains('тыкв')) {
-      return 'https://images.unsplash.com/photo-1476718406336-bb5a9690ee2a?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('уха') || t.contains('балық сорпасы') || t.contains('семга')) {
-      return 'assets/images/tomyam.png';
-    }
-    if (t.contains('кеспе') || t.contains('лапша') || t.contains('суп') || t.contains('сорпа')) {
-      return 'assets/images/soup.jpg';
-    }
-
-    if (t.contains('омлет') || t.contains('жұмыртқа') || t.contains('яйц')) {
-      return 'https://images.unsplash.com/photo-1494597564530-871f2b93ac55?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('сұлы') || t.contains('овсянка') || t.contains('каша')) {
-      return 'https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('сырник')) {
-      return 'https://images.unsplash.com/photo-1598214886806-c87b2a370944?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('блин') || t.contains('блины') || t.contains('қаймақты блин')) {
-      return 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=500&auto=format&fit=crop';
-    }
-
-    if (t.contains('стейк') || t.contains('beef steak') || t.contains('рибай')) {
-      return 'https://images.unsplash.com/photo-1600891964599-f61ba0e24092?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('веллингтон') || t.contains('wellington')) {
-      return 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('цезарь') || t.contains('caesar')) {
-      return 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('грек') || t.contains('greek')) {
-      return 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('брускетта') || t.contains('bruschetta')) {
-      return 'https://images.unsplash.com/photo-1572656631137-7935297eff55?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('хумус') || t.contains('hummus')) {
-      return 'https://images.unsplash.com/photo-1577906096429-f73df2c3e273?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('пюре') || t.contains('картоп')) {
-      return 'https://images.unsplash.com/photo-1621841957884-1210fe19d66d?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('гречка')) {
-      return 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('рис') || t.contains('күріш')) {
-      return 'https://images.unsplash.com/photo-1516685018646-549198525c1b?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('карбонара') || t.contains('паста') || t.contains('pasta') || t.contains('спагетти')) {
-      return 'assets/images/pasta.jpg';
-    }
-
-    if (t.contains('шоколад') || t.contains('торт') || t.contains('cake') || t.contains('пирог')) {
-      if (t.contains('бал') || t.contains('мед') || t.contains('медовик')) {
-        return 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?w=500&auto=format&fit=crop';
-      }
-      return 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('чизкейк') || t.contains('cheesecake')) {
-      return 'https://images.unsplash.com/photo-1524351199679-46cddf530c04?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('тирамису') || t.contains('tiramisu')) {
-      return 'https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('пахлава') || t.contains('baklava')) {
-      return 'https://images.unsplash.com/photo-1519676867240-f03562e64548?w=500&auto=format&fit=crop';
-    }
-
-    if (t.contains('шырын') || t.contains('сок') || t.contains('апельсин')) {
-      return 'https://images.unsplash.com/photo-1621506289937-a8e4df240d0b?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('смузи') || t.contains('smoothie')) {
-      return 'https://images.unsplash.com/photo-1553530979-7ee52a2670c4?w=500&auto=format&fit=crop';
-    }
-    if (t.contains('чай') || t.contains('шай') || t.contains('tea')) {
-      return 'assets/images/ceremony.jpg';
-    }
-
+    final key = id.isNotEmpty ? id : title;
+    final lockVal = key.hashCode.abs() % 10000;
+    
+    // Normalize query tag based on category
+    String tag = 'food';
     final c = category.toLowerCase();
     if (c.contains('таң') || c.contains('завтрак') || c.contains('breakfast')) {
-      return 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=500&auto=format&fit=crop';
+      tag = 'breakfast,pancake';
+    } else if (c.contains('тәтті') || c.contains('десерт') || c.contains('dessert')) {
+      tag = 'dessert,cake';
+    } else if (c.contains('сусын') || c.contains('напит') || c.contains('drink') || c.contains('beverage')) {
+      tag = 'beverage,juice';
+    } else if (c.contains('кешкі') || c.contains('ужин') || c.contains('dinner') || c.contains('beef') || c.contains('meat')) {
+      tag = 'steak,meat';
+    } else if (c.contains('гарнир') || c.contains('side')) {
+      tag = 'salad,rice';
+    } else if (c.contains('түскі') || c.contains('обед') || c.contains('lunch') || c.contains('soup')) {
+      tag = 'soup,curry';
     }
-    if (c.contains('тәтті') || c.contains('десерт') || c.contains('dessert')) {
-      return 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=500&auto=format&fit=crop';
-    }
-    if (c.contains('сусын') || c.contains('напит') || c.contains('drink') || c.contains('beverage')) {
-      return 'https://images.unsplash.com/photo-1553530979-7ee52a2670c4?w=500&auto=format&fit=crop';
-    }
-
-    int hash = 0;
-    final key = id.isNotEmpty ? id : title;
-    for (int i = 0; i < key.length; i++) {
-      hash += key.codeUnitAt(i);
-    }
-    return _fallbackFoodImages[hash % _fallbackFoodImages.length];
+    
+    return 'https://loremflickr.com/500/500/$tag?lock=$lockVal';
   }
 }
