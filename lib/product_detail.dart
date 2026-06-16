@@ -22,6 +22,18 @@ class ProductDetailScreen extends StatefulWidget {
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isFavorite = false;
   bool _favoriteLoading = false;
+  
+  List<Map<String, dynamic>> _reviews = [];
+  bool _reviewsLoading = false;
+  double _userRating = 5.0;
+  final _commentController = TextEditingController();
+  bool _reviewSubmitting = false;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
 
   List<String> _normalizeList(dynamic value) {
     if (value == null) return [];
@@ -137,6 +149,174 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   void initState() {
     super.initState();
     _loadFavoriteState();
+    _loadReviews();
+  }
+
+  Future<void> _loadReviews() async {
+    final productId = widget.product['_id']?.toString();
+    if (productId == null) return;
+    setState(() => _reviewsLoading = true);
+    try {
+      final reviews = await ApiService.getProductReviews(productId);
+      setState(() {
+        _reviews = reviews;
+        _reviewsLoading = false;
+      });
+    } catch (_) {
+      setState(() => _reviewsLoading = false);
+    }
+  }
+
+  Future<void> _submitReview() async {
+    final comment = _commentController.text.trim();
+    if (comment.isEmpty) return;
+    
+    final productId = widget.product['_id']?.toString();
+    if (productId == null) return;
+
+    setState(() => _reviewSubmitting = true);
+    try {
+      final profile = await ApiService.getUserProfile(widget.userId);
+      final userName = '${profile['name'] ?? 'Пайдаланушы'} ${profile['surname'] ?? ''}'.trim();
+      
+      await ApiService.addProductReview(
+        productId,
+        widget.userId,
+        userName.isNotEmpty ? userName : 'User',
+        _userRating,
+        comment,
+      );
+
+      _commentController.clear();
+      setState(() {
+        _userRating = 5.0;
+        _reviewSubmitting = false;
+      });
+      
+      _loadReviews();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(Loc.lang.value == 'kz' ? 'Пікір сәтті қосылды!' : 'Отзыв успешно добавлен!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _reviewSubmitting = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${Loc.tr('error')}: $e')),
+        );
+      }
+    }
+  }
+
+  Widget _buildAddReviewForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          Loc.lang.value == 'kz' ? 'Пікір қалдыру' : 'Оставить отзыв',
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (int i = 1; i <= 5; i++)
+              IconButton(
+                icon: Icon(
+                  i <= _userRating ? Icons.star : Icons.star_border,
+                  color: Colors.amber,
+                  size: 28,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _userRating = i.toDouble();
+                  });
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        TextField(
+          controller: _commentController,
+          decoration: InputDecoration(
+            hintText: Loc.lang.value == 'kz' ? 'Пікіріңіз...' : 'Ваш отзыв...',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          ),
+          maxLines: 2,
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: _reviewSubmitting ? null : _submitReview,
+            child: _reviewSubmitting
+                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : Text(Loc.tr('save'), style: const TextStyle(color: Colors.white)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildReviewsList() {
+    if (_reviews.isEmpty) {
+      return Text(
+        Loc.lang.value == 'kz' ? 'Пікірлер әлі жоқ' : 'Отзывов пока нет',
+        style: const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+      );
+    }
+    return Column(
+      children: _reviews.map((rev) {
+        final double r = (rev['rating'] ?? 5.0).toDouble();
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.grey.shade100),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    rev['userName'] ?? 'User',
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Row(
+                    children: [
+                      for (int i = 1; i <= 5; i++)
+                        Icon(
+                          i <= r ? Icons.star : Icons.star_border,
+                          color: Colors.amber,
+                          size: 16,
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                rev['comment'] ?? '',
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
   }
 
   Future<void> _loadFavoriteState() async {
@@ -396,6 +576,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               const Icon(Icons.chevron_right, color: Colors.orange),
                             ],
                           ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      _sectionCard(
+                        icon: Icons.reviews_outlined,
+                        title: Loc.lang.value == 'kz' ? 'Пікірлер' : 'Отзывы',
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (widget.userId != 'guest') ...[
+                              _buildAddReviewForm(),
+                              const Divider(height: 24),
+                            ],
+                            _buildReviewsList(),
+                          ],
                         ),
                       ),
                       

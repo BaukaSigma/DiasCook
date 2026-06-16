@@ -5,6 +5,7 @@ import 'package:first/api.dart';
 import 'login.dart';
 import 'product_detail.dart';
 import 'localization.dart';
+import 'user_orders.dart';
 
 class CartScreen extends StatefulWidget {
   final String userId;
@@ -90,43 +91,346 @@ class CartScreenState extends State<CartScreen> {
   Future<void> _checkout() async {
     if (_cartItems.isEmpty) return;
 
-    final String? method = await showDialog<String>(
+    // Fetch user profile to get default address
+    String defaultAddress = '';
+    try {
+      final profile = await ApiService.getUserProfile(widget.userId);
+      defaultAddress = profile['deliveryAddress'] ?? profile['address'] ?? '';
+    } catch (_) {}
+
+    final addressController = TextEditingController(text: defaultAddress);
+    String deliveryType = 'pickup'; // pickup or external_delivery
+    String paymentMethod = 'Card'; // Card or Cash
+    
+    final formKey = GlobalKey<FormState>();
+    final cardNoController = TextEditingController();
+    final expiryController = TextEditingController();
+    final cvvController = TextEditingController();
+
+    final bool? completed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: Text(Loc.tr('payment_method')),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.money, color: Colors.green),
-              title: Text(Loc.tr('cash')),
-              onTap: () => Navigator.pop(context, 'cash'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.credit_card, color: Colors.blue),
-              title: Text(Loc.tr('card')),
-              onTap: () => Navigator.pop(context, 'card'),
-            ),
-          ],
-        ),
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 24,
+                left: 24,
+                right: 24,
+              ),
+              child: SingleChildScrollView(
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Container(
+                          width: 48,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        Loc.lang.value == 'kz' ? 'Тапсырысты рәсімдеу' : 'Оформление заказа',
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ),
+                      const SizedBox(height: 20),
+                      
+                      // Delivery Type Selection
+                      Text(
+                        Loc.lang.value == 'kz' ? 'Алу түрі' : 'Способ получения',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Самовывоз' : 'Самовывоз')),
+                              selected: deliveryType == 'pickup',
+                              selectedColor: Colors.amber.shade100,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setModalState(() => deliveryType = 'pickup');
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ChoiceChip(
+                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Доставка' : 'Доставка')),
+                              selected: deliveryType == 'external_delivery',
+                              selectedColor: Colors.amber.shade100,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setModalState(() => deliveryType = 'external_delivery');
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Delivery Info Text / Address Input
+                      if (deliveryType == 'pickup')
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.store, color: Colors.green.shade700),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  Loc.lang.value == 'kz' 
+                                      ? 'Тапсырысты өзіңіз алып кете аласыз.' 
+                                      : 'Вы можете забрать заказ самостоятельно.',
+                                  style: TextStyle(color: Colors.green.shade800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.local_shipping, color: Colors.blue.shade700),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  Loc.lang.value == 'kz' 
+                                      ? 'Жеткізу сыртқы қызмет арқылы жүзеге асырылады.' 
+                                      : 'Доставка осуществляется сторонними службами.',
+                                  style: TextStyle(color: Colors.blue.shade800),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: addressController,
+                          decoration: InputDecoration(
+                            labelText: Loc.tr('delivery_addr'),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(Icons.location_on),
+                          ),
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return Loc.lang.value == 'kz' ? 'Мекенжайды енгізіңіз' : 'Введите адрес доставки';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 20),
+                      
+                      // Payment Method Selection
+                      Text(
+                        Loc.lang.value == 'kz' ? 'Төлем түрі' : 'Способ оплаты',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: ChoiceChip(
+                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Карта' : 'Картой')),
+                              selected: paymentMethod == 'Card',
+                              selectedColor: Colors.amber.shade100,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setModalState(() => paymentMethod = 'Card');
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ChoiceChip(
+                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Қолма-қол' : 'Наличными')),
+                              selected: paymentMethod == 'Cash',
+                              selectedColor: Colors.amber.shade100,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  setModalState(() => paymentMethod = 'Cash');
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Card details if selected
+                      if (paymentMethod == 'Card') ...[
+                        TextFormField(
+                          controller: cardNoController,
+                          decoration: InputDecoration(
+                            labelText: Loc.tr('card_number'),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            prefixIcon: const Icon(Icons.credit_card),
+                          ),
+                          keyboardType: TextInputType.number,
+                          maxLength: 19,
+                          inputFormatters: [CardNumberInputFormatter()],
+                          validator: (value) {
+                            if (value == null || value.trim().length < 19) {
+                              return Loc.tr('invalid_card_no');
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: TextFormField(
+                                controller: expiryController,
+                                decoration: InputDecoration(
+                                  labelText: Loc.tr('expiry'),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(Icons.date_range),
+                                ),
+                                keyboardType: TextInputType.number,
+                                maxLength: 5,
+                                inputFormatters: [CardExpiryInputFormatter()],
+                                validator: (value) {
+                                  if (value == null || value.length < 5) {
+                                    return Loc.tr('invalid_expiry');
+                                  }
+                                  final parts = value.split('/');
+                                  if (parts.length != 2) return Loc.tr('invalid_expiry');
+                                  final month = int.tryParse(parts[0]);
+                                  final year = int.tryParse(parts[1]);
+                                  if (month == null || month < 1 || month > 12) {
+                                    return Loc.tr('invalid_month');
+                                  }
+                                  if (year == null || year < 26) {
+                                    return Loc.lang.value == 'kz' ? 'Жыл қате (минумы 26)' : 'Год неверный (минимум 26)';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: TextFormField(
+                                controller: cvvController,
+                                decoration: InputDecoration(
+                                  labelText: Loc.tr('cvv'),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                                  prefixIcon: const Icon(Icons.lock_outline),
+                                ),
+                                keyboardType: TextInputType.number,
+                                maxLength: 3,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                                validator: (value) {
+                                  if (value == null || value.length < 3) {
+                                    return Loc.tr('invalid_cvv');
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 24),
+                      
+                      // Submit Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.amber,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          onPressed: () {
+                            if (formKey.currentState!.validate()) {
+                              Navigator.pop(context, true);
+                            }
+                          },
+                          child: Text(
+                            paymentMethod == 'Card' 
+                                ? (Loc.lang.value == 'kz' ? 'Төлеу' : 'Оплатить')
+                                : (Loc.lang.value == 'kz' ? 'Тапсырыс беру' : 'Оформить заказ'),
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
 
-    if (method == null) return;
-
-    if (method == 'card') {
-      final bool? paid = await _showCardPaymentDialog();
-      if (paid != true) return;
-    }
+    if (completed != true) return;
 
     try {
       setState(() => _isLoading = true);
-      await ApiService.checkoutCart(widget.userId);
+      final res = await ApiService.checkoutCart(
+        widget.userId,
+        deliveryType,
+        deliveryType == 'pickup' ? 'Самовывоз' : addressController.text.trim(),
+        paymentMethod,
+        cardNoController.text.trim(),
+      );
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(method == 'card' ? Loc.tr('success_payment') : Loc.tr('cash_payment_msg')), backgroundColor: Colors.green),
-        );
-        fetchCart();
+        if (res['ok'] == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                paymentMethod == 'Card' 
+                    ? Loc.tr('success_payment') 
+                    : Loc.tr('cash_payment_msg'),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          fetchCart();
+          
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserOrdersScreen(userId: widget.userId),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${Loc.tr('error')}: ${res['error']}')),
+          );
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -137,88 +441,6 @@ class CartScreenState extends State<CartScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  Future<bool?> _showCardPaymentDialog() async {
-    final formKey = GlobalKey<FormState>();
-    return showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(Loc.tr('card')),
-        content: Form(
-          key: formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                decoration: InputDecoration(labelText: Loc.tr('card_number')),
-                keyboardType: TextInputType.number,
-                maxLength: 19,
-                inputFormatters: [CardNumberInputFormatter()],
-                validator: (value) {
-                  if (value == null || value.trim().length < 19) {
-                    return Loc.tr('invalid_card_no');
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 8),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      decoration: InputDecoration(labelText: Loc.tr('expiry')),
-                      keyboardType: TextInputType.number,
-                      maxLength: 5,
-                      inputFormatters: [CardExpiryInputFormatter()],
-                      validator: (value) {
-                        if (value == null || value.length < 5) {
-                          return Loc.tr('invalid_expiry');
-                        }
-                        final parts = value.split('/');
-                        if (parts.length != 2) return Loc.tr('invalid_expiry');
-                        final month = int.tryParse(parts[0]);
-                        if (month == null || month < 1 || month > 12) {
-                          return Loc.tr('invalid_month');
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: TextFormField(
-                      decoration: InputDecoration(labelText: Loc.tr('cvv')),
-                      keyboardType: TextInputType.number,
-                      maxLength: 3,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      validator: (value) {
-                        if (value == null || value.length < 3) {
-                          return Loc.tr('invalid_cvv');
-                        }
-                        return null;
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(Loc.tr('cancel'))),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                Navigator.pop(context, true);
-              }
-            },
-            child: Text(Loc.tr('pay_button')),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

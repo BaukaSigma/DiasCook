@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:first/mock_data.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 
 
@@ -17,7 +18,14 @@ class ApiService {
       if (user != null) {
         final doc = await _db.collection('users').doc(user.uid).get();
         final isAdmin = doc.data()?['isAdmin'] == true;
-        return {'ok': true, 'userId': user.uid, 'isAdmin': isAdmin, 'user': doc.data()};
+        final userData = doc.data() ?? {};
+        final name = userData['name'] ?? '';
+        final surname = userData['surname'] ?? '';
+        
+        // Trigger email notification in background
+        EmailService.sendLoginNotification(email, '$name $surname'.trim());
+        
+        return {'ok': true, 'userId': user.uid, 'isAdmin': isAdmin, 'user': userData};
       }
       return {'ok': false, 'error': 'Қате'};
     } on FirebaseAuthException catch (e) {
@@ -224,17 +232,35 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> getProductById(String id) async {
-    // Mock product?
+    Map<String, dynamic> productData;
     if (id.startsWith('mock_')) {
       final mock = mockRecipes.firstWhere(
         (m) => m['_id'] == id,
         orElse: () => <String, dynamic>{},
       );
-      if (mock.isNotEmpty) return _enrichProduct(id, Map<String, dynamic>.from(mock));
+      if (mock.isEmpty) throw Exception('Табылмады');
+      productData = Map<String, dynamic>.from(mock);
+    } else {
+      final doc = await _db.collection('products').doc(id).get();
+      if (!doc.exists) throw Exception('Табылмады');
+      productData = Map<String, dynamic>.from(doc.data()!);
     }
-    final doc = await _db.collection('products').doc(id).get();
-    if (!doc.exists) throw Exception('Табылмады');
-    return _enrichProduct(doc.id, doc.data()!);
+
+    try {
+      final reviewsSnap = await _db.collection('products').doc(id).collection('reviews').get();
+      if (reviewsSnap.docs.isNotEmpty) {
+        double sum = 0;
+        for (var doc in reviewsSnap.docs) {
+          sum += (doc.data()['rating'] ?? 0.0).toDouble();
+        }
+        productData['rating'] = sum / reviewsSnap.docs.length;
+        productData['reviewsCount'] = reviewsSnap.docs.length;
+      }
+    } catch (e) {
+      print('Error fetching reviews for product: $e');
+    }
+
+    return _enrichProduct(id, productData);
   }
 
   static Future<Map<String, dynamic>> addProduct(Map<String, dynamic> product) async {
@@ -386,12 +412,6 @@ ${jsonEncode(simplifiedProducts)}
     await _db.collection('products').doc(productId).delete();
   }
 
-  // --- Әкімші (Admin) ---
-  static Future<List<dynamic>> getAllUsers() async {
-    final snapshot = await _db.collection('users').get();
-    return snapshot.docs.map((d) => {'_id': d.id, ...d.data()}).toList();
-  }
-
   static Future<Map<String, dynamic>> createRecipe(Map<String, dynamic> recipe) async {
     final docRef = await _db.collection('products').add(recipe);
     return {'ok': true, 'recipeId': docRef.id};
@@ -404,10 +424,6 @@ ${jsonEncode(simplifiedProducts)}
   static Future<Map<String, dynamic>> updateUser(String id, Map<String, dynamic> user) async {
     await _db.collection('users').doc(id).update(user);
     return {'ok': true};
-  }
-
-  static Future<void> deleteUser(String id) async {
-    await _db.collection('users').doc(id).delete();
   }
 
   static Future<Map<String, dynamic>> updateRecipe(String id, Map<String, dynamic> recipe) async {
@@ -507,14 +523,96 @@ ${jsonEncode(simplifiedProducts)}
     return {'ok': true};
   }
 
-  static Future<Map<String, dynamic>> checkoutCart(String userId) async {
-    // Просто очищаем корзину
-    final cartRef = _db.collection('users').doc(userId).collection('cart');
-    final snapshot = await cartRef.get();
-    for (var doc in snapshot.docs) {
-      await doc.reference.delete();
+  static Future<Map<String, dynamic>> checkoutCart(
+    String userId,
+    String deliveryType,
+    String deliveryAddress,
+    String paymentMethod,
+    String cardNo,
+  ) async {
+    try {
+      final cartSnapshot = await _db.collection('users').doc(userId).collection('cart').get();
+      if (cartSnapshot.docs.isEmpty) {
+        return {'ok': false, 'error': 'Себет бос'};
+      }
+      
+      final userDoc = await _db.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        return {'ok': false, 'error': 'Пайдаланушы табылмады'};
+      }
+      final userData = userDoc.data()!;
+      final userName = '${userData['name'] ?? ''} ${userData['surname'] ?? ''}'.trim();
+      final userEmail = userData['email'] ?? '';
+      final userPhone = userData['phone'] ?? '';
+      
+      final List<Map<String, dynamic>> resolvedItems = [];
+      for (var doc in cartSnapshot.docs) {
+        final cartData = doc.data();
+        final productId = cartData['productId'];
+        final quantity = cartData['quantity'] ?? 1;
+        
+        final pDoc = await getProductById(productId);
+        resolvedItems.add({
+          'productId': productId,
+          'title': pDoc['title'] ?? pDoc['titleRu'] ?? '',
+          'price': pDoc['price'] ?? 0,
+          'quantity': quantity,
+          'imageUrl': pDoc['imageUrl'] ?? '',
+          'sellerId': pDoc['sellerId'] ?? 'guest',
+        });
+      }
+      
+      final Map<String, List<Map<String, dynamic>>> groups = {};
+      for (var item in resolvedItems) {
+        final sellerId = item['sellerId'] as String;
+        groups.putIfAbsent(sellerId, () => []).add(item);
+      }
+      
+      for (var entry in groups.entries) {
+        final sellerId = entry.key;
+        final sellerItems = entry.value;
+        
+        double sellerTotalPrice = 0;
+        for (var item in sellerItems) {
+          sellerTotalPrice += ((item['price'] as num).toDouble() * (item['quantity'] as num).toDouble());
+        }
+        
+        final orderRef = _db.collection('orders').doc();
+        final orderId = orderRef.id;
+        
+        final orderData = {
+          'orderId': orderId,
+          'userId': userId,
+          'userName': userName,
+          'userEmail': userEmail,
+          'userPhone': userPhone,
+          'deliveryAddress': deliveryAddress,
+          'deliveryType': deliveryType,
+          'items': sellerItems,
+          'totalPrice': sellerTotalPrice,
+          'paymentMethod': paymentMethod,
+          'paymentStatus': paymentMethod == 'Cash' ? 'pending' : 'confirmed',
+          'orderStatus': 'accepted',
+          'sellerId': sellerId,
+          'createdAt': FieldValue.serverTimestamp(),
+        };
+        
+        await orderRef.set(orderData);
+        
+        if (userEmail.isNotEmpty) {
+          EmailService.sendOrderInvoiceEmail(userEmail, orderData);
+        }
+      }
+      
+      for (var doc in cartSnapshot.docs) {
+        await doc.reference.delete();
+      }
+      
+      return {'ok': true};
+    } catch (e) {
+      print('Checkout error: $e');
+      return {'ok': false, 'error': e.toString()};
     }
-    return {'ok': true};
   }
 
   // --- Миграция базы данных (Астана, описание/шаги, цены) ---
@@ -795,5 +893,219 @@ Return the translations in a JSON array matching the following schema exactly (w
     }
     
     return 'https://loremflickr.com/500/500/$tag?lock=$lockVal';
+  }
+
+  // --- Profile, Orders, Reviews, Ratings, Admin, and Image Upload Helpers ---
+
+  static Future<Map<String, dynamic>> getUserProfile(String userId) async {
+    final doc = await _db.collection('users').doc(userId).get();
+    if (!doc.exists) return {};
+    return doc.data()!;
+  }
+
+  static Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
+    await _db.collection('users').doc(userId).set(data, SetOptions(merge: true));
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final snap = await _db.collection('users').get();
+    return snap.docs.map((d) => {'userId': d.id, '_id': d.id, ...d.data()}).toList();
+  }
+
+  static Future<void> updateUserRole(String userId, bool isAdmin) async {
+    await _db.collection('users').doc(userId).update({'isAdmin': isAdmin});
+  }
+
+  static Future<void> deleteUser(String userId) async {
+    await _db.collection('users').doc(userId).delete();
+  }
+
+  static Future<List<Map<String, dynamic>>> getUserOrders(String userId) async {
+    final snap = await _db.collection('orders').where('userId', isEqualTo: userId).get();
+    final list = snap.docs.map((d) => d.data()).toList();
+    list.sort((a, b) {
+      final aTime = a['createdAt'] as Timestamp?;
+      final bTime = b['createdAt'] as Timestamp?;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+    return list;
+  }
+
+  static Future<List<Map<String, dynamic>>> getSellerOrders(String sellerId) async {
+    final snap = await _db.collection('orders').where('sellerId', isEqualTo: sellerId).get();
+    final list = snap.docs.map((d) => d.data()).toList();
+    list.sort((a, b) {
+      final aTime = a['createdAt'] as Timestamp?;
+      final bTime = b['createdAt'] as Timestamp?;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+    return list;
+  }
+
+  static Future<void> updateOrderStatus(String orderId, String newStatus) async {
+    await _db.collection('orders').doc(orderId).update({
+      'orderStatus': newStatus,
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>> getAllOrders() async {
+    final snap = await _db.collection('orders').get();
+    final list = snap.docs.map((d) => d.data()).toList();
+    list.sort((a, b) {
+      final aTime = a['createdAt'] as Timestamp?;
+      final bTime = b['createdAt'] as Timestamp?;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+    return list;
+  }
+
+  static Future<List<Map<String, dynamic>>> getProductReviews(String productId) async {
+    final snap = await _db.collection('products').doc(productId).collection('reviews').get();
+    final list = snap.docs.map((d) => {'_id': d.id, ...d.data()}).toList();
+    list.sort((a, b) {
+      final aTime = a['createdAt'] as Timestamp?;
+      final bTime = b['createdAt'] as Timestamp?;
+      if (aTime == null) return 1;
+      if (bTime == null) return -1;
+      return bTime.compareTo(aTime);
+    });
+    return list;
+  }
+
+  static Future<void> addProductReview(String productId, String userId, String userName, double rating, String comment) async {
+    if (productId.startsWith('mock_')) {
+      final pDoc = await _db.collection('products').doc(productId).get();
+      if (!pDoc.exists) {
+        final mock = mockRecipes.firstWhere((m) => m['_id'] == productId, orElse: () => {});
+        if (mock.isNotEmpty) {
+          await _db.collection('products').doc(productId).set(Map<String, dynamic>.from(mock));
+        }
+      }
+    }
+
+    await _db.collection('products').doc(productId).collection('reviews').add({
+      'userId': userId,
+      'userName': userName,
+      'rating': rating,
+      'comment': comment,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    final reviewsSnap = await _db.collection('products').doc(productId).collection('reviews').get();
+    double sum = 0;
+    for (var doc in reviewsSnap.docs) {
+      sum += (doc.data()['rating'] ?? 0.0).toDouble();
+    }
+    final avgRating = sum / reviewsSnap.docs.length;
+
+    await _db.collection('products').doc(productId).update({
+      'rating': avgRating,
+      'reviewsCount': reviewsSnap.docs.length,
+    });
+  }
+
+  static Future<double> getSellerRating(String sellerId) async {
+    final allProducts = await getProducts();
+    final sellerProducts = allProducts.where((p) => p['sellerId'] == sellerId).toList();
+    if (sellerProducts.isEmpty) return 0.0;
+
+    double sum = 0;
+    int count = 0;
+    for (var p in sellerProducts) {
+      final rating = (p['rating'] ?? 0.0).toDouble();
+      if (rating > 0) {
+        sum += rating;
+        count++;
+      }
+    }
+    return count > 0 ? sum / count : 0.0;
+  }
+
+  static Future<String> uploadImage(Uint8List bytes, String fileName) async {
+    final ext = fileName.split('.').last.toLowerCase();
+    final mime = ext == 'png' ? 'image/png' : 'image/jpeg';
+    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+    final docRef = await _db.collection('product_images').add({
+      'data': dataUrl,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return 'firestore_image:${docRef.id}';
+  }
+}
+
+class EmailService {
+  static const String _backendUrl = 'http://localhost:3001';
+
+  static Future<bool> sendEmail({
+    required String to,
+    required String subject,
+    required String html,
+    String text = '',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$_backendUrl/api/send-email'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'to': to,
+          'subject': subject,
+          'text': text,
+          'html': html,
+        }),
+      ).timeout(const Duration(seconds: 5));
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Email sending failed: $e');
+      return false;
+    }
+  }
+
+  static Future<void> sendOrderInvoiceEmail(String toEmail, Map<String, dynamic> order) async {
+    final orderId = order['orderId'];
+    final itemsList = order['items'] as List;
+    final totalPrice = order['totalPrice'];
+    final deliveryType = order['deliveryType'] == 'pickup' ? 'Самовывоз' : 'Доставка';
+
+    String itemsHtml = '';
+    for (var item in itemsList) {
+      itemsHtml += '<li>${item["title"]} - ${item["quantity"]} шт. (${item["price"]} ₸)</li>';
+    }
+
+    final html = '''
+      <h2>Рахмет! Сіздің тапсырысыңыз қабылданды.</h2>
+      <p>Тапсырыс нөмірі: <strong>#$orderId</strong></p>
+      <p>Алу түрі: <strong>$deliveryType</strong></p>
+      <ul>$itemsHtml</ul>
+      <p>Жалпы сомасы: <strong>$totalPrice ₸</strong></p>
+      <p>Жақында біздің сатушы сізбен байланысады.</p>
+    ''';
+
+    await sendEmail(
+      to: toEmail,
+      subject: 'Тапсырыс қабылданды #$orderId',
+      html: html,
+      text: 'Сіздің тапсырысыңыз қабылданды #$orderId. Жалпы сомасы: $totalPrice ₸',
+    );
+  }
+
+  static Future<void> sendLoginNotification(String toEmail, String userName) async {
+    final html = '''
+      <h2>Сәлеметсіз бе, $userName!</h2>
+      <p>Сіз өзіңіздің CookPad / DiasCook аккаунтыңызға кірдіңіз.</p>
+      <p>Егер бұл сіз болмасаңыз, құпия сөзіңізді тезірек ауыстырыңыз.</p>
+    ''';
+
+    await sendEmail(
+      to: toEmail,
+      subject: 'Аккаунтқа кіру туралы хабарлама',
+      html: html,
+      text: 'Сіз CookPad аккаунтыңызға сәтті кірдіңіз.',
+    );
   }
 }

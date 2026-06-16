@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import '../login.dart';
 import '../product_detail.dart';
+import '../home.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   final Map<String, dynamic> admin;
@@ -19,6 +21,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
     'Пайдаланушылар',
     'Рецепттер',
     'Рецепт қосу',
+    'Тапсырыстар',
     'Әкімші профилі',
   ];
 
@@ -29,6 +32,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
       const AdminUsersTab(),
       const AdminRecipesTab(),
       const AdminAddRecipeTab(),
+      const AdminOrdersTab(),
       AdminProfileTab(admin: widget.admin),
     ];
   }
@@ -57,6 +61,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Пайдаланушылар'),
           BottomNavigationBarItem(icon: Icon(Icons.menu_book), label: 'Рецепттер'),
           BottomNavigationBarItem(icon: Icon(Icons.add_circle), label: 'Қосу'),
+          BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Тапсырыстар'),
           BottomNavigationBarItem(icon: Icon(Icons.admin_panel_settings), label: 'Парақша'),
         ],
       ),
@@ -415,6 +420,10 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
   final TextEditingController _videoUrlController = TextEditingController();
   final TextEditingController _ingredientsController = TextEditingController();
   final TextEditingController _stepsController = TextEditingController();
+  
+  final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _locationController = TextEditingController();
+  final TextEditingController _sellerIdController = TextEditingController();
 
   bool _saving = false;
 
@@ -427,6 +436,9 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
     _videoUrlController.dispose();
     _ingredientsController.dispose();
     _stepsController.dispose();
+    _priceController.dispose();
+    _locationController.dispose();
+    _sellerIdController.dispose();
     super.dispose();
   }
 
@@ -461,6 +473,9 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
       'videoUrl': _videoUrlController.text.trim(),
       'ingredients': _splitLines(_ingredientsController.text),
       'steps': _splitLines(_stepsController.text),
+      'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+      'location': _locationController.text.trim(),
+      'sellerId': _sellerIdController.text.trim().isEmpty ? 'admin' : _sellerIdController.text.trim(),
     };
 
     try {
@@ -476,6 +491,9 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
       _videoUrlController.clear();
       _ingredientsController.clear();
       _stepsController.clear();
+      _priceController.clear();
+      _locationController.clear();
+      _sellerIdController.clear();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -527,6 +545,25 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
           ),
           const SizedBox(height: 12),
           _InputField(
+            controller: _priceController,
+            label: 'Бағасы (₸)',
+            icon: Icons.attach_money,
+            keyboardType: TextInputType.number,
+          ),
+          const SizedBox(height: 12),
+          _InputField(
+            controller: _locationController,
+            label: 'Қала / Мекенжай',
+            icon: Icons.location_on,
+          ),
+          const SizedBox(height: 12),
+          _InputField(
+            controller: _sellerIdController,
+            label: 'Сатушы ID',
+            icon: Icons.account_box,
+          ),
+          const SizedBox(height: 12),
+          _InputField(
             controller: _ingredientsController,
             label: 'Ингредиенттер (әр жолға біреуден)',
             icon: Icons.checklist,
@@ -566,7 +603,7 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
 
 class AdminProfileTab extends StatelessWidget {
   final Map<String, dynamic> admin;
-  const AdminProfileTab({super.key, required this.admin});
+  const AdminProfileTab({required this.admin, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -601,6 +638,25 @@ class AdminProfileTab extends StatelessWidget {
             style: TextStyle(color: Colors.grey.shade600),
           ),
           const Spacer(),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (_) => HomeScreen(userId: admin['userId'] ?? 'guest')),
+                (_) => false,
+              );
+            },
+            icon: const Icon(Icons.home),
+            label: const Text('Пайдаланушы режимі'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 12),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pushAndRemoveUntil(
@@ -848,6 +904,10 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
   late final TextEditingController _videoUrlController;
   late final TextEditingController _ingredientsController;
   late final TextEditingController _stepsController;
+  
+  late final TextEditingController _priceController;
+  late final TextEditingController _locationController;
+  late final TextEditingController _sellerIdController;
 
   bool _saving = false;
 
@@ -862,6 +922,10 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
     _videoUrlController = TextEditingController(text: recipe['videoUrl'] ?? '');
     _ingredientsController = TextEditingController(text: _joinLines(recipe['ingredients']));
     _stepsController = TextEditingController(text: _joinLines(recipe['steps']));
+    
+    _priceController = TextEditingController(text: recipe['price']?.toString() ?? '');
+    _locationController = TextEditingController(text: recipe['location'] ?? '');
+    _sellerIdController = TextEditingController(text: recipe['sellerId'] ?? '');
   }
 
   String _joinLines(dynamic value) {
@@ -888,6 +952,9 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
     _videoUrlController.dispose();
     _ingredientsController.dispose();
     _stepsController.dispose();
+    _priceController.dispose();
+    _locationController.dispose();
+    _sellerIdController.dispose();
     super.dispose();
   }
 
@@ -915,6 +982,9 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
       'videoUrl': _videoUrlController.text.trim(),
       'ingredients': _splitLines(_ingredientsController.text),
       'steps': _splitLines(_stepsController.text),
+      'price': double.tryParse(_priceController.text.trim()) ?? 0.0,
+      'location': _locationController.text.trim(),
+      'sellerId': _sellerIdController.text.trim().isEmpty ? 'admin' : _sellerIdController.text.trim(),
     };
 
     try {
@@ -973,6 +1043,25 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
             ),
             const SizedBox(height: 12),
             _InputField(
+              controller: _priceController,
+              label: 'Бағасы (₸)',
+              icon: Icons.attach_money,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            _InputField(
+              controller: _locationController,
+              label: 'Қала / Мекенжай',
+              icon: Icons.location_on,
+            ),
+            const SizedBox(height: 12),
+            _InputField(
+              controller: _sellerIdController,
+              label: 'Сатушы ID',
+              icon: Icons.account_box,
+            ),
+            const SizedBox(height: 12),
+            _InputField(
               controller: _ingredientsController,
               label: 'Ингредиенттер (әр жолға біреуден)',
               icon: Icons.checklist,
@@ -1016,6 +1105,7 @@ class _InputField extends StatelessWidget {
   final IconData icon;
   final int maxLines;
   final bool obscureText;
+  final TextInputType keyboardType;
 
   const _InputField({
     required this.controller,
@@ -1023,6 +1113,7 @@ class _InputField extends StatelessWidget {
     required this.icon,
     this.maxLines = 1,
     this.obscureText = false,
+    this.keyboardType = TextInputType.text,
   });
 
   @override
@@ -1031,6 +1122,7 @@ class _InputField extends StatelessWidget {
       controller: controller,
       maxLines: maxLines,
       obscureText: obscureText,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.orange),
@@ -1066,6 +1158,217 @@ class _EmptyState extends StatelessWidget {
           Text(text, style: const TextStyle(fontSize: 18, color: Colors.grey)),
         ],
       ),
+    );
+  }
+}
+
+class AdminOrdersTab extends StatefulWidget {
+  const AdminOrdersTab({super.key});
+
+  @override
+  State<AdminOrdersTab> createState() => _AdminOrdersTabState();
+}
+
+class _AdminOrdersTabState extends State<AdminOrdersTab> {
+  late Future<List<Map<String, dynamic>>> _ordersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersFuture = ApiService.getAllOrders();
+  }
+
+  Future<void> _refreshOrders() async {
+    setState(() {
+      _ordersFuture = ApiService.getAllOrders();
+    });
+  }
+
+  String _formatDate(dynamic timestamp) {
+    if (timestamp == null) return '';
+    DateTime dt;
+    if (timestamp is Timestamp) {
+      dt = timestamp.toDate();
+    } else {
+      dt = DateTime.tryParse(timestamp.toString()) ?? DateTime.now();
+    }
+    final day = dt.day.toString().padLeft(2, '0');
+    final month = dt.month.toString().padLeft(2, '0');
+    final year = dt.year.toString();
+    final hour = dt.hour.toString().padLeft(2, '0');
+    final minute = dt.minute.toString().padLeft(2, '0');
+    return '$day.$month.$year $hour:$minute';
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'accepted':
+        return 'Заказ принят';
+      case 'cooking':
+        return 'Готовится';
+      case 'ready':
+        return 'Готов';
+      case 'completed':
+        return 'Завершен';
+      case 'cancelled':
+        return 'Отменен';
+      default:
+        return status;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'accepted':
+        return Colors.orange;
+      case 'cooking':
+        return Colors.amber.shade700;
+      case 'ready':
+        return Colors.blue;
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _ordersFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Қате: ${snapshot.error}'));
+        }
+        final orders = snapshot.data ?? [];
+        if (orders.isEmpty) {
+          return const _EmptyState(
+            icon: Icons.receipt_long,
+            text: 'Тапсырыстар табылмады',
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: _refreshOrders,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: orders.length,
+            itemBuilder: (context, index) {
+              final order = orders[index];
+              final status = order['orderStatus'] ?? 'accepted';
+              final items = order['items'] as List? ?? [];
+              final deliveryType = order['deliveryType'] ?? 'pickup';
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 3,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Тапсырыс #${order['orderId'].toString().substring(0, 8)}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(status).withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: _getStatusColor(status)),
+                            ),
+                            child: Text(
+                              _getStatusText(status),
+                              style: TextStyle(
+                                color: _getStatusColor(status),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Күні: ${_formatDate(order['createdAt'])}',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                      ),
+                      const Divider(height: 20),
+                      
+                      Text('Клиент: ${order['userName'] ?? 'N/A'} (${order['userPhone'] ?? 'N/A'})',
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                      Text('Продавец ID: ${order['sellerId'] ?? 'N/A'}',
+                          style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
+                      Text('Тип получения: ${deliveryType == 'pickup' ? 'Самовывоз' : 'Доставка'}',
+                          style: const TextStyle(fontSize: 13)),
+                      if (deliveryType == 'external_delivery')
+                        Text('Адрес: ${order['deliveryAddress'] ?? ''}',
+                            style: const TextStyle(fontSize: 13, color: Colors.orangeAccent)),
+                      
+                      const Divider(height: 20),
+                      
+                      ...items.map((item) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Row(
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(6),
+                                child: SizedBox(
+                                  width: 30,
+                                  height: 30,
+                                  child: Image.network(
+                                    item['imageUrl'] ?? '',
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, size: 20),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(item['title'] ?? '', style: const TextStyle(fontSize: 13)),
+                              ),
+                              Text('${item['quantity']} × ${item['price']} ₸',
+                                  style: const TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                        );
+                      }),
+                      
+                      const Divider(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Жалпы сомасы / Общая сумма', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            '${order['totalPrice']?.toInt() ?? 0} ₸',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.green),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Способ оплаты: ${order['paymentMethod']} (${order['paymentStatus'] == 'confirmed' ? 'Оплачено' : 'В ожидании'})',
+                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

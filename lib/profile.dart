@@ -5,6 +5,12 @@ import 'login.dart';
 import 'add_product.dart';
 import 'my_products.dart';
 import 'localization.dart';
+import 'firestore_image.dart';
+import 'user_orders.dart';
+import 'seller_orders.dart';
+import 'admin/admin_panel.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 
 Widget _buildInfoCard({
   required BuildContext context,
@@ -51,10 +57,50 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
           ),
           child: Column(
             children: [
-              const CircleAvatar(
-                radius: 50,
-                backgroundColor: Colors.white,
-                child: Icon(Icons.person, size: 60, color: Colors.orange),
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: () => _editProfile(context, user, reloadUser),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(50),
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        color: Colors.white,
+                        child: user['sellerLogo'] != null && user['sellerLogo'].toString().isNotEmpty
+                            ? FirestoreImage(
+                                imageUrl: user['sellerLogo'].toString(),
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              )
+                            : Center(
+                                child: Text(
+                                  fullName.trim().isNotEmpty 
+                                      ? fullName.trim()[0].toUpperCase() 
+                                      : '?',
+                                  style: const TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.orange),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: GestureDetector(
+                      onTap: () => _editProfile(context, user, reloadUser),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.orange,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 16),
               Padding(
@@ -80,9 +126,18 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 16),
-              Text(
-                Loc.tr('contact_info'),
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    Loc.tr('contact_info'),
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange.shade700),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_note, size: 28, color: Colors.orange),
+                    onPressed: () => _editProfile(context, user, reloadUser),
+                  ),
+                ],
               ),
               const Divider(color: Colors.orangeAccent),
               
@@ -97,7 +152,9 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                 context: context,
                 icon: Icons.phone_android_outlined,
                 label: Loc.tr('phone'),
-                value: user['phone'] ?? 'N/A',
+                value: user['phone'] != null && user['phone'].toString().isNotEmpty
+                    ? user['phone'].toString()
+                    : Loc.tr('not_specified'),
               ),
 
               _buildInfoCard(
@@ -107,42 +164,6 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                 value: user['deliveryAddress'] != null && user['deliveryAddress'].toString().isNotEmpty
                     ? user['deliveryAddress'].toString()
                     : Loc.tr('not_specified'),
-                onEdit: () async {
-                  final ctrl = TextEditingController(text: user['deliveryAddress'] ?? '');
-                  final newAddr = await showDialog<String>(
-                    context: context,
-                    builder: (_) => AlertDialog(
-                      title: Text(Loc.tr('delivery_addr')),
-                      content: TextField(
-                        controller: ctrl,
-                        decoration: const InputDecoration(
-                          hintText: 'Almaty, Abay 15, apt 10',
-                          border: OutlineInputBorder(),
-                        ),
-                        maxLines: 2,
-                      ),
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(context), child: Text(Loc.tr('cancel'))),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
-                          onPressed: () => Navigator.pop(context, ctrl.text.trim()),
-                          child: Text(Loc.tr('save'), style: const TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (newAddr != null && context.mounted) {
-                    try {
-                      await ApiService.updateUserAddress(user['userId'], newAddr);
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('saved'))));
-                        reloadUser();
-                      }
-                    } catch (e) {
-                      if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
-                    }
-                  }
-                },
               ),
               
               const SizedBox(height: 32),
@@ -182,8 +203,70 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              
+              const SizedBox(height: 12),
+
+              // Order History Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => UserOrdersScreen(userId: user['userId'])));
+                  },
+                  icon: const Icon(Icons.history),
+                  label: Text(Loc.lang.value == 'kz' ? 'Тапсырыстар тарихы' : 'История заказов'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Seller Orders Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => SellerOrdersScreen(sellerId: user['userId'])));
+                  },
+                  icon: const Icon(Icons.assignment),
+                  label: Text(Loc.lang.value == 'kz' ? 'Тапсырыстарды басқару' : 'Мои заказы (Продавец)'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.teal.shade600,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Admin Panel Button (only if isAdmin is true)
+              if (user['isAdmin'] == true) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => AdminPanelScreen(admin: user)));
+                    },
+                    icon: const Icon(Icons.admin_panel_settings),
+                    label: Text(Loc.lang.value == 'kz' ? 'Әкімшілік панель' : 'Админ-панель'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.purple.shade600,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+              ],
+
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -206,6 +289,157 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
         ),
       ],
     ),
+  );
+}
+
+Future<void> _editProfile(BuildContext context, Map<String, dynamic> user, VoidCallback reloadUser) async {
+  final nameController = TextEditingController(text: user['name'] ?? '');
+  final surnameController = TextEditingController(text: user['surname'] ?? '');
+  final phoneController = TextEditingController(text: user['phone'] ?? '');
+  final addressController = TextEditingController(text: user['deliveryAddress'] ?? user['address'] ?? '');
+  
+  Uint8List? newImageBytes;
+  String? newImageName;
+  String currentAvatar = user['sellerLogo'] ?? '';
+  bool isUploading = false;
+
+  await showDialog(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: Text(Loc.lang.value == 'kz' ? 'Профильді өңдеу' : 'Редактировать профиль'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      final picked = await picker.pickImage(source: ImageSource.gallery);
+                      if (picked != null) {
+                        final bytes = await picked.readAsBytes();
+                        setState(() {
+                          newImageBytes = bytes;
+                          newImageName = picked.name;
+                        });
+                      }
+                    },
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(40),
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey.shade200,
+                            child: newImageBytes != null
+                                ? Image.memory(newImageBytes!, width: 80, height: 80, fit: BoxFit.cover)
+                                : (currentAvatar.isNotEmpty
+                                    ? FirestoreImage(imageUrl: currentAvatar, width: 80, height: 80, fit: BoxFit.cover)
+                                    : const Icon(Icons.person, size: 50, color: Colors.orange)),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                            child: const Icon(Icons.edit, size: 14, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: Loc.lang.value == 'kz' ? 'Аты' : 'Имя',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: surnameController,
+                    decoration: InputDecoration(
+                      labelText: Loc.lang.value == 'kz' ? 'Тегі' : 'Фамилия',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneController,
+                    decoration: InputDecoration(
+                      labelText: Loc.lang.value == 'kz' ? 'Телефон' : 'Телефон',
+                      border: const OutlineInputBorder(),
+                    ),
+                    keyboardType: TextInputType.phone,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: addressController,
+                    decoration: InputDecoration(
+                      labelText: Loc.lang.value == 'kz' ? 'Жеткізу мекенжайы' : 'Адрес доставки',
+                      border: const OutlineInputBorder(),
+                    ),
+                    maxLines: 2,
+                  ),
+                  if (isUploading) ...[
+                    const SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isUploading ? null : () => Navigator.pop(context),
+                child: Text(Loc.tr('cancel')),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                onPressed: isUploading
+                    ? null
+                    : () async {
+                        setState(() => isUploading = true);
+                        try {
+                          String avatarUrl = currentAvatar;
+                          if (newImageBytes != null && newImageName != null) {
+                            avatarUrl = await ApiService.uploadImage(newImageBytes!, newImageName!);
+                          }
+                          
+                          await ApiService.updateUserProfile(user['userId'], {
+                            'name': nameController.text.trim(),
+                            'surname': surnameController.text.trim(),
+                            'phone': phoneController.text.trim(),
+                            'deliveryAddress': addressController.text.trim(),
+                            'sellerLogo': avatarUrl,
+                          });
+                          
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(Loc.tr('saved'))));
+                            Navigator.pop(context);
+                            reloadUser();
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
+                          }
+                          setState(() => isUploading = false);
+                        }
+                      },
+                child: Text(Loc.tr('save'), style: const TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+    },
   );
 }
 

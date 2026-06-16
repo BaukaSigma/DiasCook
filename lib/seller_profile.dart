@@ -32,12 +32,24 @@ class SellerProfileScreen extends StatefulWidget {
 class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = true;
   List<dynamic> _products = [];
-  final double rating = 4.8; 
+  double _rating = 0.0;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _loadSellerRating();
+  }
+
+  Future<void> _loadSellerRating() async {
+    try {
+      final r = await ApiService.getSellerRating(widget.sellerId);
+      if (mounted) {
+        setState(() {
+          _rating = r;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadProducts() async {
@@ -116,7 +128,10 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         children: [
                           const Icon(Icons.star, color: Colors.yellow, size: 24),
                           const SizedBox(width: 4),
-                          Text('$rating', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          Text(
+                            _rating > 0 ? _rating.toStringAsFixed(1) : '5.0',
+                            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ],
