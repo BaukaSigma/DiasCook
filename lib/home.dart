@@ -492,6 +492,8 @@ class _ProductCard extends StatelessWidget {
           title = (product['titleKz'] ?? '').toString();
         } else if (lang == 'ru') {
           title = (product['titleRu'] ?? '').toString();
+        } else if (lang == 'en') {
+          title = (product['titleEn'] ?? '').toString();
         }
         if (title.trim().isEmpty) {
           title = (product['title'] ?? 'Title').toString();

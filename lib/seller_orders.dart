@@ -61,15 +61,15 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
   String _getStatusText(String status, String lang) {
     switch (status) {
       case 'accepted':
-        return lang == 'kz' ? 'Тапсырыс қабылданды' : 'Заказ принят';
+        return lang == 'kz' ? 'Тапсырыс қабылданды' : (lang == 'en' ? 'Order accepted' : 'Заказ принят');
       case 'cooking':
-        return lang == 'kz' ? 'Дайындалуда' : 'Готовится';
+        return lang == 'kz' ? 'Дайындалуда' : (lang == 'en' ? 'Cooking' : 'Готовится');
       case 'ready':
-        return lang == 'kz' ? 'Дайын' : 'Готов';
+        return lang == 'kz' ? 'Дайын' : (lang == 'en' ? 'Ready' : 'Готов');
       case 'completed':
-        return lang == 'kz' ? 'Аяқталды' : 'Завершён';
+        return lang == 'kz' ? 'Аяқталды' : (lang == 'en' ? 'Completed' : 'Завершён');
       case 'cancelled':
-        return lang == 'kz' ? 'Бас тартылды' : 'Отменён';
+        return lang == 'kz' ? 'Бас тартылды' : (lang == 'en' ? 'Cancelled' : 'Отменён');
       default:
         return status;
     }
@@ -98,7 +98,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(Loc.lang.value == 'kz' ? 'Тапсырыс күйі жаңартылды' : 'Статус заказа обновлен'),
+            content: Text(Loc.lang.value == 'kz' ? 'Тапсырыс күйі жаңартылды' : (Loc.lang.value == 'en' ? 'Order status updated' : 'Статус заказа обновлен')),
             backgroundColor: Colors.green,
           ),
         );
@@ -120,7 +120,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
       builder: (context, lang, child) {
         return Scaffold(
           appBar: AppBar(
-            title: Text(lang == 'kz' ? 'Сатушы тапсырыстары' : 'Управление заказами (Продавец)'),
+            title: Text(Loc.tr('seller_orders')),
             backgroundColor: Colors.amber,
             foregroundColor: Colors.black87,
             elevation: 0,
@@ -137,7 +137,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                             Icon(Icons.assignment_turned_in_outlined, size: 80, color: Colors.grey.shade400),
                             const SizedBox(height: 16),
                             Text(
-                              lang == 'kz' ? 'Тапсырыстар табылмады' : 'Новых заказов нет',
+                              lang == 'kz' ? 'Тапсырыстар табылмады' : (lang == 'en' ? 'No new orders' : 'Новых заказов нет'),
                               style: const TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -178,23 +178,36 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                   const Divider(height: 20),
                                   
                                   Text(
-                                    '${lang == 'kz' ? 'Тұтынушы' : 'Покупатель'}: ${order['userName'] ?? 'N/A'}',
+                                    '${lang == 'kz' ? 'Тұтынушы' : (lang == 'en' ? 'Customer' : 'Покупатель')}: ${order['userName'] ?? 'N/A'}',
                                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${lang == 'kz' ? 'Телефон' : 'Телефон'}: ${order['userPhone'] ?? 'N/A'}',
+                                    '${lang == 'kz' ? 'Телефон' : (lang == 'en' ? 'Phone' : 'Телефон')}: ${order['userPhone'] ?? 'N/A'}',
                                     style: const TextStyle(fontSize: 13),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${lang == 'kz' ? 'Алу түрі' : 'Получение'}: ${deliveryType == 'pickup' ? (lang == 'kz' ? 'Өзім алып кету' : 'Самовывоз') : (lang == 'kz' ? 'Жеткізу' : 'Доставка')}',
+                                    '${Loc.tr('getting_method')}: ${deliveryType == 'pickup' ? Loc.tr('pickup') : Loc.tr('delivery')}',
                                     style: const TextStyle(fontSize: 13),
                                   ),
                                   if (deliveryType == 'external_delivery') ...[
                                     const SizedBox(height: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.blue.shade200),
+                                      ),
+                                      child: Text(
+                                        Loc.tr('delivery_in_progress'),
+                                        style: TextStyle(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      '${lang == 'kz' ? 'Мекенжай' : 'Адрес'}: ${order['deliveryAddress'] ?? ''}',
+                                      '${lang == 'kz' ? 'Мекенжай' : (lang == 'en' ? 'Address' : 'Адрес')}: ${order['deliveryAddress'] ?? ''}',
                                       style: const TextStyle(fontSize: 13, color: Colors.blueAccent, fontWeight: FontWeight.w500),
                                     ),
                                   ],
@@ -236,7 +249,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        lang == 'kz' ? 'Сомасы' : 'Сумма к оплате',
+                                        lang == 'kz' ? 'Сомасы' : (lang == 'en' ? 'Total' : 'Сумма к оплате'),
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                       ),
                                       Text(
@@ -254,7 +267,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                   Row(
                                     children: [
                                       Text(
-                                        '${lang == 'kz' ? 'Ағымдағы күйі' : 'Текущий статус'}: ',
+                                        '${lang == 'kz' ? 'Ағымдағы күйі' : (lang == 'en' ? 'Current status' : 'Текущий статус')}: ',
                                         style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                                       ),
                                       Container(
@@ -274,7 +287,7 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                   const SizedBox(height: 16),
                                   
                                   Text(
-                                    lang == 'kz' ? 'Күйді өзгерту:' : 'Изменить статус на:',
+                                    lang == 'kz' ? 'Күйді өзгерту:' : (lang == 'en' ? 'Change status to:' : 'Изменить статус на:'),
                                     style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
                                   ),
                                   const SizedBox(height: 8),
@@ -283,15 +296,15 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
                                       children: [
-                                        _buildStatusButton('accepted', 'Принят', Colors.orange, status, orderId),
+                                        _buildStatusButton('accepted', Loc.lang.value == 'en' ? 'Accepted' : 'Принят', Colors.orange, status, orderId),
                                         const SizedBox(width: 8),
-                                        _buildStatusButton('cooking', 'Готовится', Colors.amber.shade700, status, orderId),
+                                        _buildStatusButton('cooking', Loc.lang.value == 'en' ? 'Cooking' : 'Готовится', Colors.amber.shade700, status, orderId),
                                         const SizedBox(width: 8),
-                                        _buildStatusButton('ready', 'Готов', Colors.blue, status, orderId),
+                                        _buildStatusButton('ready', Loc.lang.value == 'en' ? 'Ready' : 'Готов', Colors.blue, status, orderId),
                                         const SizedBox(width: 8),
-                                        _buildStatusButton('completed', 'Завершён', Colors.green, status, orderId),
+                                        _buildStatusButton('completed', Loc.lang.value == 'en' ? 'Completed' : 'Завершён', Colors.green, status, orderId),
                                         const SizedBox(width: 8),
-                                        _buildStatusButton('cancelled', 'Отменён', Colors.red, status, orderId),
+                                        _buildStatusButton('cancelled', Loc.lang.value == 'en' ? 'Cancelled' : 'Отменён', Colors.red, status, orderId),
                                       ],
                                     ),
                                   ),

@@ -147,6 +147,17 @@ class ApiService {
     return cleaned;
   }
 
+  static String normalizeAstanaAddress(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return 'Астана';
+    return trimmed
+        .replaceAll('Алматы', 'Астана')
+        .replaceAll('алматы', 'Астана')
+        .replaceAll('Almaty', 'Astana')
+        .replaceAll('almaty', 'Astana');
+  }
+
+
   // --- Хелпер: обогащение продукта (аватарка, адрес, категория) ---
   static Map<String, dynamic> _enrichProduct(String id, Map<String, dynamic> data) {
     final result = Map<String, dynamic>.from({'_id': id, ...data});
@@ -195,9 +206,13 @@ class ApiService {
                (!logo.startsWith('http') && !logo.startsWith('assets/') && !logo.startsWith('data:'))) {
       result['sellerLogo'] = '';
     }
-    // Если адрес пустой — ставим Астана
+    // Если адрес пустой или не астанинский — показываем Астану.
     final loc = (result['location'] ?? '').toString();
-    if (loc.isEmpty) result['location'] = 'Астана';
+    result['location'] = normalizeAstanaAddress(loc);
+    final fullAddress = (result['fullAddress'] ?? '').toString();
+    if (fullAddress.isNotEmpty) {
+      result['fullAddress'] = normalizeAstanaAddress(fullAddress);
+    }
 
     // Уникальные/не дублирующиеся картинки для блюд
     final imgUrl = (result['imageUrl'] ?? '').toString();

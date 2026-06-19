@@ -33,12 +33,25 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
   bool _isLoading = true;
   List<dynamic> _products = [];
   double _rating = 0.0;
+  Map<String, dynamic>? _seller;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
     _loadSellerRating();
+    _loadSeller();
+  }
+
+  Future<void> _loadSeller() async {
+    try {
+      final response = await ApiService.getUserById(widget.sellerId);
+      if (mounted && response['ok'] == true) {
+        setState(() {
+          _seller = response['user'] as Map<String, dynamic>?;
+        });
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadSellerRating() async {
@@ -71,11 +84,13 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final name = widget.sellerName ?? Loc.tr('seller_label');
-    final logo = widget.sellerLogo ?? '';
-    final instagram = widget.sellerInstagram ?? '';
-    final phone = widget.phone ?? '+7 701 123 4567';
-
+    final seller = _seller;
+    final name = widget.sellerName ?? '${seller?['name'] ?? ''} ${seller?['surname'] ?? ''}'.trim();
+    final displayName = name.trim().isEmpty ? Loc.tr('seller_label') : name;
+    final logo = (widget.sellerLogo?.isNotEmpty == true ? widget.sellerLogo : seller?['sellerLogo'])?.toString() ?? '';
+    final instagram = widget.sellerInstagram ?? seller?['instagram']?.toString() ?? '';
+    final phone = widget.phone ?? seller?['phone']?.toString() ?? '+7 701 123 4567';
+    final address = ApiService.normalizeAstanaAddress((widget.address?.isNotEmpty == true ? widget.address : seller?['deliveryAddress'] ?? seller?['address'] ?? '').toString());
     return ValueListenableBuilder<String>(
       valueListenable: Loc.lang,
       builder: (context, lang, child) {
@@ -113,13 +128,15 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                                 ? CachedNetworkImage(
                                     imageUrl: logo,
                                     width: 100, height: 100, fit: BoxFit.cover,
-                                    errorWidget: (c, u, e) => _initials(name),
+                                    errorWidget: (c, u, e) => _initials(displayName),
                                   )
-                                : _initials(name),
+                                : logo.isNotEmpty
+                                    ? FirestoreImage(imageUrl: logo, width: 100, height: 100, fit: BoxFit.cover)
+                                    : _initials(displayName),
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        name,
+                        displayName,
                         style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       const SizedBox(height: 8),
@@ -156,7 +173,7 @@ class _SellerProfileScreenState extends State<SellerProfileScreen> {
                         ),
                       ListTile(
                         leading: const Icon(Icons.location_on, color: Colors.orange),
-                        title: Text(widget.address == null || widget.address!.isEmpty ? Loc.tr('not_specified') : widget.address!),
+                        title: Text(address),
                         subtitle: Text(Loc.tr('address'), style: const TextStyle(fontSize: 12)),
                       ),
                       const SizedBox(height: 24),

@@ -193,7 +193,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                     Navigator.push(context, MaterialPageRoute(builder: (_) => MyProductsScreen(userId: user['userId'])));
                   },
                   icon: const Icon(Icons.restaurant_menu),
-                  label: const Text('Менің тағамдарым'),
+                  label: Text(Loc.tr('my_products')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.orange.shade600,
                     foregroundColor: Colors.white,
@@ -213,7 +213,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                     Navigator.push(context, MaterialPageRoute(builder: (_) => UserOrdersScreen(userId: user['userId'])));
                   },
                   icon: const Icon(Icons.history),
-                  label: Text(Loc.lang.value == 'kz' ? 'Тапсырыстар тарихы' : 'История заказов'),
+                  label: Text(Loc.tr('order_history')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue.shade600,
                     foregroundColor: Colors.white,
@@ -233,7 +233,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                     Navigator.push(context, MaterialPageRoute(builder: (_) => SellerOrdersScreen(sellerId: user['userId'])));
                   },
                   icon: const Icon(Icons.assignment),
-                  label: Text(Loc.lang.value == 'kz' ? 'Тапсырыстарды басқару' : 'Мои заказы (Продавец)'),
+                  label: Text(Loc.tr('seller_orders')),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.teal.shade600,
                     foregroundColor: Colors.white,
@@ -254,7 +254,7 @@ Widget _buildProfileContent(BuildContext context, Map<String, dynamic> user, Voi
                       Navigator.push(context, MaterialPageRoute(builder: (_) => AdminPanelScreen(admin: user)));
                     },
                     icon: const Icon(Icons.admin_panel_settings),
-                    label: Text(Loc.lang.value == 'kz' ? 'Әкімшілік панель' : 'Админ-панель'),
+                    label: Text(Loc.tr('admin_panel')),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.purple.shade600,
                       foregroundColor: Colors.white,
@@ -310,7 +310,7 @@ Future<void> _editProfile(BuildContext context, Map<String, dynamic> user, VoidC
       return StatefulBuilder(
         builder: (context, setState) {
           return AlertDialog(
-            title: Text(Loc.lang.value == 'kz' ? 'Профильді өңдеу' : 'Редактировать профиль'),
+            title: Text(Loc.lang.value == 'kz' ? 'Профильді өңдеу' : (Loc.lang.value == 'en' ? 'Edit profile' : 'Редактировать профиль')),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -359,7 +359,7 @@ Future<void> _editProfile(BuildContext context, Map<String, dynamic> user, VoidC
                   TextField(
                     controller: nameController,
                     decoration: InputDecoration(
-                      labelText: Loc.lang.value == 'kz' ? 'Аты' : 'Имя',
+                      labelText: Loc.tr('name_label'),
                       border: const OutlineInputBorder(),
                     ),
                   ),
@@ -367,7 +367,7 @@ Future<void> _editProfile(BuildContext context, Map<String, dynamic> user, VoidC
                   TextField(
                     controller: surnameController,
                     decoration: InputDecoration(
-                      labelText: Loc.lang.value == 'kz' ? 'Тегі' : 'Фамилия',
+                      labelText: Loc.tr('surname_label'),
                       border: const OutlineInputBorder(),
                     ),
                   ),
@@ -375,7 +375,7 @@ Future<void> _editProfile(BuildContext context, Map<String, dynamic> user, VoidC
                   TextField(
                     controller: phoneController,
                     decoration: InputDecoration(
-                      labelText: Loc.lang.value == 'kz' ? 'Телефон' : 'Телефон',
+                      labelText: Loc.tr('phone_label'),
                       border: const OutlineInputBorder(),
                     ),
                     keyboardType: TextInputType.phone,
@@ -384,7 +384,7 @@ Future<void> _editProfile(BuildContext context, Map<String, dynamic> user, VoidC
                   TextField(
                     controller: addressController,
                     decoration: InputDecoration(
-                      labelText: Loc.lang.value == 'kz' ? 'Жеткізу мекенжайы' : 'Адрес доставки',
+                      labelText: Loc.tr('delivery_addr'),
                       border: const OutlineInputBorder(),
                     ),
                     maxLines: 2,

@@ -143,14 +143,14 @@ class CartScreenState extends State<CartScreen> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        Loc.lang.value == 'kz' ? 'Тапсырысты рәсімдеу' : 'Оформление заказа',
+                        Loc.lang.value == 'kz' ? 'Тапсырысты рәсімдеу' : (Loc.lang.value == 'en' ? 'Checkout' : 'Оформление заказа'),
                         style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
                       ),
                       const SizedBox(height: 20),
                       
                       // Delivery Type Selection
                       Text(
-                        Loc.lang.value == 'kz' ? 'Алу түрі' : 'Способ получения',
+                        Loc.tr('getting_method'),
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
@@ -158,7 +158,7 @@ class CartScreenState extends State<CartScreen> {
                         children: [
                           Expanded(
                             child: ChoiceChip(
-                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Самовывоз' : 'Самовывоз')),
+                              label: Center(child: Text(Loc.tr('pickup'))),
                               selected: deliveryType == 'pickup',
                               selectedColor: Colors.amber.shade100,
                               onSelected: (selected) {
@@ -171,7 +171,7 @@ class CartScreenState extends State<CartScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ChoiceChip(
-                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Доставка' : 'Доставка')),
+                              label: Center(child: Text(Loc.tr('delivery'))),
                               selected: deliveryType == 'external_delivery',
                               selectedColor: Colors.amber.shade100,
                               onSelected: (selected) {
@@ -199,9 +199,7 @@ class CartScreenState extends State<CartScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  Loc.lang.value == 'kz' 
-                                      ? 'Тапсырысты өзіңіз алып кете аласыз.' 
-                                      : 'Вы можете забрать заказ самостоятельно.',
+                                  Loc.tr('pickup_note'),
                                   style: TextStyle(color: Colors.green.shade800),
                                 ),
                               ),
@@ -221,9 +219,7 @@ class CartScreenState extends State<CartScreen> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  Loc.lang.value == 'kz' 
-                                      ? 'Жеткізу сыртқы қызмет арқылы жүзеге асырылады.' 
-                                      : 'Доставка осуществляется сторонними службами.',
+                                  Loc.tr('delivery_note'),
                                   style: TextStyle(color: Colors.blue.shade800),
                                 ),
                               ),
@@ -240,7 +236,7 @@ class CartScreenState extends State<CartScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
-                              return Loc.lang.value == 'kz' ? 'Мекенжайды енгізіңіз' : 'Введите адрес доставки';
+                              return Loc.lang.value == 'kz' ? 'Мекенжайды енгізіңіз' : (Loc.lang.value == 'en' ? 'Enter delivery address' : 'Введите адрес доставки');
                             }
                             return null;
                           },
@@ -250,7 +246,7 @@ class CartScreenState extends State<CartScreen> {
                       
                       // Payment Method Selection
                       Text(
-                        Loc.lang.value == 'kz' ? 'Төлем түрі' : 'Способ оплаты',
+                        Loc.tr('payment_method'),
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
@@ -258,7 +254,7 @@ class CartScreenState extends State<CartScreen> {
                         children: [
                           Expanded(
                             child: ChoiceChip(
-                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Карта' : 'Картой')),
+                              label: Center(child: Text(Loc.tr('card'))),
                               selected: paymentMethod == 'Card',
                               selectedColor: Colors.amber.shade100,
                               onSelected: (selected) {
@@ -271,7 +267,7 @@ class CartScreenState extends State<CartScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ChoiceChip(
-                              label: Center(child: Text(Loc.lang.value == 'kz' ? 'Қолма-қол' : 'Наличными')),
+                              label: Center(child: Text(Loc.tr('cash'))),
                               selected: paymentMethod == 'Cash',
                               selectedColor: Colors.amber.shade100,
                               onSelected: (selected) {
@@ -331,7 +327,7 @@ class CartScreenState extends State<CartScreen> {
                                     return Loc.tr('invalid_month');
                                   }
                                   if (year == null || year < 26) {
-                                    return Loc.lang.value == 'kz' ? 'Жыл қате (минумы 26)' : 'Год неверный (минимум 26)';
+                                    return Loc.lang.value == 'kz' ? 'Жыл қате (минумы 26)' : (Loc.lang.value == 'en' ? 'Invalid year (minimum 26)' : 'Год неверный (минимум 26)');
                                   }
                                   return null;
                                 },
@@ -378,8 +374,8 @@ class CartScreenState extends State<CartScreen> {
                           },
                           child: Text(
                             paymentMethod == 'Card' 
-                                ? (Loc.lang.value == 'kz' ? 'Төлеу' : 'Оплатить')
-                                : (Loc.lang.value == 'kz' ? 'Тапсырыс беру' : 'Оформить заказ'),
+                                ? Loc.tr('pay_button')
+                                : Loc.tr('checkout_button'),
                             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
                           ),
                         ),
@@ -401,7 +397,7 @@ class CartScreenState extends State<CartScreen> {
       final res = await ApiService.checkoutCart(
         widget.userId,
         deliveryType,
-        deliveryType == 'pickup' ? 'Самовывоз' : addressController.text.trim(),
+        deliveryType == 'pickup' ? Loc.tr('pickup') : addressController.text.trim(),
         paymentMethod,
         cardNoController.text.trim(),
       );
@@ -420,7 +416,7 @@ class CartScreenState extends State<CartScreen> {
           );
           fetchCart();
           
-          Navigator.pushReplacement(
+          Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => UserOrdersScreen(userId: widget.userId),

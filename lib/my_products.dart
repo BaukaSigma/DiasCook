@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:first/api.dart';
 import 'product_detail.dart';
+import 'localization.dart';
 import 'firestore_image.dart';
 
 class MyProductsScreen extends StatefulWidget {
@@ -48,7 +49,7 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Менің тағамдарым'),
+        title: Text(Loc.tr('my_products')),
         backgroundColor: Colors.orange.shade700,
         foregroundColor: Colors.white,
       ),

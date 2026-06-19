@@ -3,6 +3,8 @@ import 'package:first/api.dart';
 import '../login.dart';
 import '../product_detail.dart';
 import '../home.dart';
+import '../localization.dart';
+import '../firestore_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AdminPanelScreen extends StatefulWidget {
@@ -45,7 +47,7 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
         backgroundColor: Colors.orange.shade700,
         foregroundColor: Colors.white,
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        automaticallyImplyLeading: true,
       ),
       body: IndexedStack(
         index: _currentIndex,
@@ -97,7 +99,7 @@ class _AdminUsersTabState extends State<AdminUsersTab> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.zero,
       ),
       builder: (_) => _UserFormSheet(user: user),
     );
@@ -269,7 +271,7 @@ class _AdminRecipesTabState extends State<AdminRecipesTab> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.zero,
       ),
       builder: (_) => _RecipeFormSheet(recipe: recipe),
     );
@@ -601,23 +603,117 @@ class _AdminAddRecipeTabState extends State<AdminAddRecipeTab> {
   }
 }
 
-class AdminProfileTab extends StatelessWidget {
+class AdminProfileTab extends StatefulWidget {
   final Map<String, dynamic> admin;
   const AdminProfileTab({required this.admin, super.key});
 
   @override
+  State<AdminProfileTab> createState() => _AdminProfileTabState();
+}
+
+class _AdminProfileTabState extends State<AdminProfileTab> {
+  late Map<String, dynamic> _admin;
+
+  @override
+  void initState() {
+    super.initState();
+    _admin = Map<String, dynamic>.from(widget.admin);
+  }
+
+  Future<void> _editProfile() async {
+    final nameController = TextEditingController(text: _admin['name'] ?? '');
+    final surnameController = TextEditingController(text: _admin['surname'] ?? '');
+    final emailController = TextEditingController(text: _admin['email'] ?? '');
+    final phoneController = TextEditingController(text: _admin['phone'] ?? '');
+    final avatarController = TextEditingController(text: _admin['sellerLogo'] ?? '');
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Профильді өңдеу'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Аты', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Тегі', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Телефон', border: OutlineInputBorder())),
+              const SizedBox(height: 12),
+              TextField(controller: avatarController, decoration: const InputDecoration(labelText: 'Аватар URL', border: OutlineInputBorder())),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Бас тарту')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Сақтау')),
+        ],
+      ),
+    );
+
+    void disposeControllers() {
+      nameController.dispose();
+      surnameController.dispose();
+      emailController.dispose();
+      phoneController.dispose();
+      avatarController.dispose();
+    }
+
+    if (saved != true) {
+      disposeControllers();
+      return;
+    }
+
+    final userId = _admin['userId']?.toString();
+    if (userId == null || userId.isEmpty) {
+      disposeControllers();
+      return;
+    }
+
+    final updates = {
+      'name': nameController.text.trim(),
+      'surname': surnameController.text.trim(),
+      'email': emailController.text.trim(),
+      'phone': phoneController.text.trim(),
+      'sellerLogo': avatarController.text.trim(),
+    };
+
+    try {
+      await ApiService.updateUserProfile(userId, updates);
+      if (!mounted) return;
+      setState(() {
+        _admin = {..._admin, ...updates};
+      });
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Профиль сақталды.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Қате: $e')));
+    } finally {
+      disposeControllers();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final fullName = '${admin['name'] ?? ''} ${admin['surname'] ?? ''}'.trim();
+    final fullName = '${_admin['name'] ?? ''} ${_admin['surname'] ?? ''}'.trim();
 
     return Padding(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const CircleAvatar(
-            radius: 42,
-            backgroundColor: Colors.orange,
-            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 42),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(42),
+            child: (_admin['sellerLogo']?.toString().isNotEmpty == true)
+                ? FirestoreImage(imageUrl: _admin['sellerLogo'].toString(), width: 84, height: 84, fit: BoxFit.cover)
+                : const CircleAvatar(
+                    radius: 42,
+                    backgroundColor: Colors.orange,
+                    child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 42),
+                  ),
           ),
           const SizedBox(height: 16),
           Text(
@@ -627,22 +723,28 @@ class AdminProfileTab extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            admin['email'] ?? 'Электрондық пошта көрсетілмеген',
+            _admin['email'] ?? 'Электрондық пошта көрсетілмеген',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade700),
           ),
           const SizedBox(height: 12),
           Text(
-            'ID: ${admin['userId'] ?? 'N/A'}',
+            'ID: ${_admin['userId'] ?? 'N/A'}',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 20),
+          OutlinedButton.icon(
+            onPressed: _editProfile,
+            icon: const Icon(Icons.edit),
+            label: const Text('Профильді өңдеу'),
           ),
           const Spacer(),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => HomeScreen(userId: admin['userId'] ?? 'guest')),
+                MaterialPageRoute(builder: (_) => HomeScreen(userId: _admin['userId'] ?? 'guest')),
                 (_) => false,
               );
             },
@@ -932,7 +1034,7 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
     if (value is List) {
       return value.map((e) => e.toString()).join('\n');
     }
-    return '';
+    return value?.toString() ?? '';
   }
 
   List<String> _splitLines(String value) {
@@ -1017,7 +1119,15 @@ class _RecipeFormSheetState extends State<_RecipeFormSheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text('Рецептті өңдеу', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back),
+                  onPressed: () => Navigator.pop(context, false),
+                ),
+                const Expanded(child: Text('Рецептті өңдеу', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold))),
+              ],
+            ),
             const SizedBox(height: 16),
             _InputField(controller: _titleController, label: 'Рецепт атауы', icon: Icons.title),
             const SizedBox(height: 12),
@@ -1129,11 +1239,11 @@ class _InputField extends StatelessWidget {
         filled: true,
         fillColor: Colors.grey.shade100,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.zero,
           borderSide: BorderSide(color: Colors.orange.shade400, width: 2),
         ),
       ),
@@ -1309,11 +1419,25 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
                           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                       Text('Продавец ID: ${order['sellerId'] ?? 'N/A'}',
                           style: const TextStyle(fontSize: 13, color: Colors.blueGrey)),
-                      Text('Тип получения: ${deliveryType == 'pickup' ? 'Самовывоз' : 'Доставка'}',
+                      Text('${Loc.tr('getting_method')}: ${deliveryType == 'pickup' ? Loc.tr('pickup') : Loc.tr('delivery')}',
                           style: const TextStyle(fontSize: 13)),
-                      if (deliveryType == 'external_delivery')
+                      if (deliveryType == 'external_delivery') ...[
+                        Container(
+                          margin: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.blue.shade200),
+                          ),
+                          child: Text(
+                            Loc.tr('delivery_in_progress'),
+                            style: TextStyle(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ),
                         Text('Адрес: ${order['deliveryAddress'] ?? ''}',
                             style: const TextStyle(fontSize: 13, color: Colors.orangeAccent)),
+                      ],
                       
                       const Divider(height: 20),
                       

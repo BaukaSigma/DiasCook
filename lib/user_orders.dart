@@ -61,15 +61,15 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
   String _getStatusText(String status, String lang) {
     switch (status) {
       case 'accepted':
-        return lang == 'kz' ? 'Тапсырыс қабылданды' : 'Заказ принят';
+        return lang == 'kz' ? 'Тапсырыс қабылданды' : (lang == 'en' ? 'Order accepted' : 'Заказ принят');
       case 'cooking':
-        return lang == 'kz' ? 'Дайындалуда' : 'Готовится';
+        return lang == 'kz' ? 'Дайындалуда' : (lang == 'en' ? 'Cooking' : 'Готовится');
       case 'ready':
-        return lang == 'kz' ? 'Дайын' : 'Готов';
+        return lang == 'kz' ? 'Дайын' : (lang == 'en' ? 'Ready' : 'Готов');
       case 'completed':
-        return lang == 'kz' ? 'Аяқталды' : 'Завершён';
+        return lang == 'kz' ? 'Аяқталды' : (lang == 'en' ? 'Completed' : 'Завершён');
       case 'cancelled':
-        return lang == 'kz' ? 'Бас тартылды' : 'Отменён';
+        return lang == 'kz' ? 'Бас тартылды' : (lang == 'en' ? 'Cancelled' : 'Отменён');
       default:
         return status;
     }
@@ -99,7 +99,7 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
       builder: (context, lang, child) {
         return Scaffold(
           appBar: AppBar(
-            title: Text(lang == 'kz' ? 'Тапсырыстар тарихы' : 'История заказов'),
+            title: Text(Loc.tr('order_history')),
             backgroundColor: Colors.amber,
             foregroundColor: Colors.black87,
             elevation: 0,
@@ -116,7 +116,7 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                             Icon(Icons.history_toggle_off, size: 80, color: Colors.grey.shade400),
                             const SizedBox(height: 16),
                             Text(
-                              lang == 'kz' ? 'Тапсырыстар табылмады' : 'Заказов пока нет',
+                              lang == 'kz' ? 'Тапсырыстар табылмады' : (lang == 'en' ? 'No orders yet' : 'Заказов пока нет'),
                               style: const TextStyle(fontSize: 18, color: Colors.grey, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -144,7 +144,7 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        '${lang == 'kz' ? 'Тапсырыс' : 'Заказ'} #${order['orderId'].toString().substring(0, 8)}',
+                                        '${lang == 'kz' ? 'Тапсырыс' : (lang == 'en' ? 'Order' : 'Заказ')} #${order['orderId'].toString().substring(0, 8)}',
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                                       ),
                                       Container(
@@ -167,7 +167,7 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    '${lang == 'kz' ? 'Күні' : 'Дата'}: ${_formatDate(order['createdAt'])}',
+                                    '${lang == 'kz' ? 'Күні' : (lang == 'en' ? 'Date' : 'Дата')}: ${_formatDate(order['createdAt'])}',
                                     style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
                                   ),
                                   const Divider(height: 24),
@@ -204,13 +204,11 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        lang == 'kz' ? 'Алу түрі' : 'Получение',
+                                        Loc.tr('getting_method'),
                                         style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                                       ),
                                       Text(
-                                        deliveryType == 'pickup' 
-                                            ? (lang == 'kz' ? 'Өзім алып кету' : 'Самовывоз')
-                                            : (lang == 'kz' ? 'Жеткізу' : 'Доставка'),
+                                        deliveryType == 'pickup' ? Loc.tr('pickup') : Loc.tr('delivery'),
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                                       ),
                                     ],
@@ -218,21 +216,30 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                   const SizedBox(height: 6),
                                   if (deliveryType == 'pickup')
                                     Text(
-                                      lang == 'kz' 
-                                          ? 'Тапсырысты өзіңіз алып кете аласыз.' 
-                                          : 'Вы можете забрать заказ самостоятельно.',
+                                      Loc.tr('pickup_note'),
                                       style: TextStyle(color: Colors.green.shade700, fontSize: 13),
                                     )
                                   else ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: Colors.blue.shade50,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.blue.shade200),
+                                      ),
+                                      child: Text(
+                                        Loc.tr('delivery_in_progress'),
+                                        style: TextStyle(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.bold),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
                                     Text(
-                                      lang == 'kz' 
-                                          ? 'Жеткізу сыртқы қызмет арқылы жүзеге асырылады.' 
-                                          : 'Доставка осуществляется сторонними службами.',
+                                      Loc.tr('delivery_note'),
                                       style: TextStyle(color: Colors.blue.shade700, fontSize: 13),
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '${lang == 'kz' ? 'Мекенжай' : 'Адрес'}: ${order['deliveryAddress'] ?? ''}',
+                                      '${lang == 'kz' ? 'Мекенжай' : (lang == 'en' ? 'Address' : 'Адрес')}: ${order['deliveryAddress'] ?? ''}',
                                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                                     ),
                                   ],
@@ -241,7 +248,7 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        lang == 'kz' ? 'Жалпы сомасы' : 'Общая сумма',
+                                        lang == 'kz' ? 'Жалпы сомасы' : (lang == 'en' ? 'Total' : 'Общая сумма'),
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                       ),
                                       Text(
@@ -256,7 +263,7 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    '${lang == 'kz' ? 'Төлем' : 'Оплата'}: ${order['paymentMethod'] == 'Card' ? (lang == 'kz' ? 'Карта (Kaspi)' : 'Картой (Kaspi)') : (lang == 'kz' ? 'Қолма-қол' : 'Наличными')} - ${order['paymentStatus'] == 'confirmed' ? (lang == 'kz' ? 'Расталды' : 'Подтверждена') : (lang == 'kz' ? 'Күтілуде' : 'В ожидании')}',
+                                    '${Loc.tr('payment_method')}: ${order['paymentMethod'] == 'Card' ? (lang == 'kz' ? 'Карта (Kaspi)' : (lang == 'en' ? 'Card (Kaspi)' : 'Картой (Kaspi)')) : Loc.tr('cash')} - ${order['paymentStatus'] == 'confirmed' ? (lang == 'kz' ? 'Расталды' : (lang == 'en' ? 'Confirmed' : 'Подтверждена')) : (lang == 'kz' ? 'Күтілуде' : (lang == 'en' ? 'Pending' : 'В ожидании'))}',
                                     style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
                                   ),
                                 ],

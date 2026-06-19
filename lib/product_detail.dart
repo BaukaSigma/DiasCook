@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart';
 import 'seller_profile.dart';
 import 'localization.dart';
@@ -44,7 +43,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           .toList();
     }
     final text = value.toString().trim();
-    return text.isEmpty ? [] : [text];
+    final parts = text.split(RegExp(r'\r?\n'));
+    return parts.map((item) => item.trim()).where((item) => item.isNotEmpty).toList();
   }
 
   List<String> _preferList(dynamic kz, dynamic ru, dynamic en, dynamic fallback) {
@@ -107,10 +107,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.zero,
         border: Border.all(color: Colors.orange.shade100),
       ),
-      child: Text(text, style: const TextStyle(fontSize: 13, height: 1.2)),
+      child: Text(text, style: const TextStyle(fontSize: 13, height: 1.2), softWrap: true),
     );
   }
 
@@ -423,7 +423,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         final sellerLogo = widget.product['sellerLogo']?.toString() ?? '';
         final instagram = widget.product['sellerInstagram']?.toString() ?? '';
         final phone = widget.product['sellerPhone']?.toString() ?? '+7 (701) 123-45-67';
-        final fullAddress = widget.product['fullAddress']?.toString() ?? widget.product['location']?.toString() ?? Loc.tr('not_specified');
+        final fullAddress = ApiService.normalizeAstanaAddress((widget.product['fullAddress'] ?? widget.product['location'] ?? '').toString());
 
         return Scaffold(
           backgroundColor: const Color(0xFFFDF7F2),
@@ -498,10 +498,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         _sectionCard(
                           icon: Icons.shopping_basket_outlined,
                           title: Loc.tr('ingredients_label'),
-                          child: Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: ingredients.map(_infoPill).toList(),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              for (final ingredient in ingredients) ...[
+                                _infoPill(ingredient),
+                                const SizedBox(height: 8),
+                              ],
+                            ],
                           ),
                         ),
 
@@ -548,11 +552,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       borderRadius: BorderRadius.circular(24),
                                       child: Image.asset(sellerLogo, width: 48, height: 48, fit: BoxFit.cover),
                                     )
-                                  : sellerLogo.startsWith('http')
+                                  : sellerLogo.isNotEmpty
                                       ? ClipRRect(
                                           borderRadius: BorderRadius.circular(24),
-                                          child: Image.network(sellerLogo, width: 48, height: 48, fit: BoxFit.cover,
-                                            errorBuilder: (_,__,___) => _sellerInitials(sellerName)),
+                                          child: FirestoreImage(imageUrl: sellerLogo, width: 48, height: 48, fit: BoxFit.cover),
                                         )
                                       : _sellerInitials(sellerName),
                               const SizedBox(width: 14),
@@ -664,10 +667,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircleAvatar(
-              radius: 40,
-              backgroundImage: logo.startsWith('http') ? NetworkImage(logo) : null,
-              child: !logo.startsWith('http') ? const Icon(Icons.person, size: 40) : null,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: logo.isNotEmpty
+                  ? FirestoreImage(imageUrl: logo, width: 80, height: 80, fit: BoxFit.cover)
+                  : const SizedBox(width: 80, height: 80, child: Icon(Icons.person, size: 40)),
             ),
             const SizedBox(height: 16),
             Text(name, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
