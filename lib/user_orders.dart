@@ -66,6 +66,8 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
         return lang == 'kz' ? 'Дайындалуда' : (lang == 'en' ? 'Cooking' : 'Готовится');
       case 'ready':
         return lang == 'kz' ? 'Дайын' : (lang == 'en' ? 'Ready' : 'Готов');
+      case 'delivering':
+        return lang == 'kz' ? 'Жеткізілуде' : (lang == 'en' ? 'Delivering' : 'Доставляется');
       case 'completed':
         return lang == 'kz' ? 'Аяқталды' : (lang == 'en' ? 'Completed' : 'Завершён');
       case 'cancelled':
@@ -83,6 +85,8 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
         return Colors.amber.shade700;
       case 'ready':
         return Colors.blue;
+      case 'delivering':
+        return Colors.purple;
       case 'completed':
         return Colors.green;
       case 'cancelled':
@@ -186,9 +190,24 @@ class _UserOrdersScreenState extends State<UserOrdersScreen> {
                                           ),
                                           const SizedBox(width: 12),
                                           Expanded(
-                                            child: Text(
-                                              item['title'] ?? '',
-                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                            child: Builder(
+                                              builder: (context) {
+                                                String itemTitle = '';
+                                                if (lang == 'kz') {
+                                                  itemTitle = item['titleKz'] ?? '';
+                                                } else if (lang == 'ru') {
+                                                  itemTitle = item['titleRu'] ?? '';
+                                                } else if (lang == 'en') {
+                                                  itemTitle = item['titleEn'] ?? '';
+                                                }
+                                                if (itemTitle.isEmpty) {
+                                                  itemTitle = item['title'] ?? '';
+                                                }
+                                                return Text(
+                                                  itemTitle,
+                                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                                );
+                                              }
                                             ),
                                           ),
                                           Text(

@@ -34,6 +34,12 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     setState(() => _loading = true);
 
     try {
+      final currentLang = Loc.lang.value;
+      if (currentLang == 'kz' || currentLang == 'kk') {
+        await FirebaseAuth.instance.setLanguageCode('kk');
+      } else {
+        await FirebaseAuth.instance.setLanguageCode(currentLang);
+      }
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       if (mounted) {
         setState(() => _sent = true);

@@ -6,6 +6,8 @@ import '../home.dart';
 import '../localization.dart';
 import '../firestore_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 
 class AdminPanelScreen extends StatefulWidget {
   final Map<String, dynamic> admin;
@@ -625,61 +627,120 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
     final surnameController = TextEditingController(text: _admin['surname'] ?? '');
     final emailController = TextEditingController(text: _admin['email'] ?? '');
     final phoneController = TextEditingController(text: _admin['phone'] ?? '');
-    final avatarController = TextEditingController(text: _admin['sellerLogo'] ?? '');
 
-    final saved = await showDialog<bool>(
+    Uint8List? newImageBytes;
+    String? newImageName;
+    String currentAvatar = _admin['sellerLogo'] ?? '';
+    bool isUploading = false;
+
+    final updates = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Профильді өңдеу'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Аты', border: OutlineInputBorder())),
-              const SizedBox(height: 12),
-              TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Тегі', border: OutlineInputBorder())),
-              const SizedBox(height: 12),
-              TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder())),
-              const SizedBox(height: 12),
-              TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Телефон', border: OutlineInputBorder())),
-              const SizedBox(height: 12),
-              TextField(controller: avatarController, decoration: const InputDecoration(labelText: 'Аватар URL', border: OutlineInputBorder())),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Профильді өңдеу'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  GestureDetector(
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      final picked = await picker.pickImage(source: ImageSource.gallery, imageQuality: 25, maxWidth: 400, maxHeight: 400);
+                      if (picked != null) {
+                        final bytes = await picked.readAsBytes();
+                        setState(() {
+                          newImageBytes = bytes;
+                          newImageName = picked.name;
+                        });
+                      }
+                    },
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(40),
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            color: Colors.grey.shade200,
+                            child: newImageBytes != null
+                                ? Image.memory(newImageBytes!, width: 80, height: 80, fit: BoxFit.cover)
+                                : (currentAvatar.isNotEmpty
+                                    ? FirestoreImage(imageUrl: currentAvatar, width: 80, height: 80, fit: BoxFit.cover)
+                                    : const Icon(Icons.person, size: 50, color: Colors.orange)),
+                          ),
+                        ),
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: const BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
+                            child: const Icon(Icons.edit, size: 14, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(controller: nameController, decoration: const InputDecoration(labelText: 'Аты', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: surnameController, decoration: const InputDecoration(labelText: 'Тегі', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Email', border: OutlineInputBorder())),
+                  const SizedBox(height: 12),
+                  TextField(controller: phoneController, decoration: const InputDecoration(labelText: 'Телефон', border: OutlineInputBorder())),
+                  if (isUploading) ...[
+                    const SizedBox(height: 16),
+                    const CircularProgressIndicator(),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isUploading ? null : () => Navigator.pop(context, null),
+                child: const Text('Бас тарту'),
+              ),
+              ElevatedButton(
+                onPressed: isUploading
+                    ? null
+                    : () async {
+                        setState(() => isUploading = true);
+                        try {
+                          String avatarUrl = currentAvatar;
+                          if (newImageBytes != null && newImageName != null) {
+                            avatarUrl = await ApiService.uploadImage(newImageBytes!, newImageName!);
+                          }
+                          Navigator.pop(context, {
+                            'name': nameController.text.trim(),
+                            'surname': surnameController.text.trim(),
+                            'email': emailController.text.trim(),
+                            'phone': phoneController.text.trim(),
+                            'sellerLogo': avatarUrl,
+                          });
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Қате: $e')));
+                          setState(() => isUploading = false);
+                        }
+                      },
+                child: const Text('Сақтау'),
+              ),
             ],
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Бас тарту')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Сақтау')),
-        ],
+          );
+        },
       ),
     );
 
-    void disposeControllers() {
-      nameController.dispose();
-      surnameController.dispose();
-      emailController.dispose();
-      phoneController.dispose();
-      avatarController.dispose();
-    }
+    nameController.dispose();
+    surnameController.dispose();
+    emailController.dispose();
+    phoneController.dispose();
 
-    if (saved != true) {
-      disposeControllers();
-      return;
-    }
+    if (updates == null) return;
 
     final userId = _admin['userId']?.toString();
-    if (userId == null || userId.isEmpty) {
-      disposeControllers();
-      return;
-    }
-
-    final updates = {
-      'name': nameController.text.trim(),
-      'surname': surnameController.text.trim(),
-      'email': emailController.text.trim(),
-      'phone': phoneController.text.trim(),
-      'sellerLogo': avatarController.text.trim(),
-    };
+    if (userId == null || userId.isEmpty) return;
 
     try {
       await ApiService.updateUserProfile(userId, updates);
@@ -691,8 +752,6 @@ class _AdminProfileTabState extends State<AdminProfileTab> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Қате: $e')));
-    } finally {
-      disposeControllers();
     }
   }
 
@@ -1228,11 +1287,14 @@ class _InputField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final finalKeyboardType = (keyboardType == TextInputType.text && maxLines > 1)
+        ? TextInputType.multiline
+        : keyboardType;
     return TextField(
       controller: controller,
       maxLines: maxLines,
       obscureText: obscureText,
-      keyboardType: keyboardType,
+      keyboardType: finalKeyboardType,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: Colors.orange),
@@ -1318,6 +1380,8 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
         return 'Готовится';
       case 'ready':
         return 'Готов';
+      case 'delivering':
+        return 'Доставляется';
       case 'completed':
         return 'Завершен';
       case 'cancelled':
@@ -1335,6 +1399,8 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
         return Colors.amber.shade700;
       case 'ready':
         return Colors.blue;
+      case 'delivering':
+        return Colors.purple;
       case 'completed':
         return Colors.green;
       case 'cancelled':
@@ -1451,16 +1517,33 @@ class _AdminOrdersTabState extends State<AdminOrdersTab> {
                                 child: SizedBox(
                                   width: 30,
                                   height: 30,
-                                  child: Image.network(
-                                    item['imageUrl'] ?? '',
+                                  child: FirestoreImage(
+                                    imageUrl: item['imageUrl'] ?? '',
+                                    width: 30,
+                                    height: 30,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const Icon(Icons.fastfood, size: 20),
                                   ),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
-                                child: Text(item['title'] ?? '', style: const TextStyle(fontSize: 13)),
+                                child: ValueListenableBuilder<String>(
+                                  valueListenable: Loc.lang,
+                                  builder: (context, lang, _) {
+                                    String itemTitle = '';
+                                    if (lang == 'kz') {
+                                      itemTitle = item['titleKz'] ?? '';
+                                    } else if (lang == 'ru') {
+                                      itemTitle = item['titleRu'] ?? '';
+                                    } else if (lang == 'en') {
+                                      itemTitle = item['titleEn'] ?? '';
+                                    }
+                                    if (itemTitle.isEmpty) {
+                                      itemTitle = item['title'] ?? '';
+                                    }
+                                    return Text(itemTitle, style: const TextStyle(fontSize: 13));
+                                  },
+                                ),
                               ),
                               Text('${item['quantity']} × ${item['price']} ₸',
                                   style: const TextStyle(fontSize: 13)),

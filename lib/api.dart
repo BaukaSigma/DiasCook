@@ -119,44 +119,60 @@ class ApiService {
     'beverages': 'Сусындар',
   };
 
-  static List<dynamic> _cleanStepsList(List<dynamic>? raw) {
-    if (raw == null) return [];
-    final cleaned = <String>[];
-    for (var item in raw) {
-      String step = item.toString().trim();
-      if (step.isEmpty) continue;
-      
-      final prefixRegex = RegExp(
-        r'^('
-        r'(?:қадам|кадам|step|этап)\s*\d+\s*[\.\:\-\–\—\s]*|'
-        r'\d+\s*(?:қадам|кадам|step|этап)\s*[\.\:\-\–\—\s]*|'
-        r'\d+[\.\)\:\-\–\—\s]+\s*'
-        r')',
-        caseSensitive: false,
-      );
-      
-      while (prefixRegex.hasMatch(step)) {
-        step = step.replaceFirst(prefixRegex, '').trim();
-      }
-      
-      if (step.isNotEmpty) {
-        step = step[0].toUpperCase() + step.substring(1);
-        cleaned.add(step);
-      }
-    }
-    return cleaned;
-  }
+
 
   static String normalizeAstanaAddress(String value) {
-    final trimmed = value.trim();
-    if (trimmed.isEmpty) return 'Астана';
-    return trimmed
+    var trimmed = value.trim();
+    if (trimmed.isEmpty) return 'ул. Кабанбай Батыра, д. 17, Астана';
+    
+    // If it contains Almaty Orbitas specifically:
+    if (trimmed.contains('Орбита-2') || trimmed.contains('Орбита')) {
+      trimmed = trimmed
+          .replaceAll(RegExp(r'мкр\.\s*Орбита-?\d*,?\s*'), 'ул. Кабанбай Батыра, ')
+          .replaceAll(RegExp(r'Орбита-?\d*,?\s*'), 'ул. Кабанбай Батыра, ');
+    }
+    
+    trimmed = trimmed
         .replaceAll('Алматы', 'Астана')
         .replaceAll('алматы', 'Астана')
         .replaceAll('Almaty', 'Astana')
         .replaceAll('almaty', 'Astana');
+        
+    // Ensure "Астана" or "Astana" is in the address
+    if (!trimmed.contains('Астана') && !trimmed.contains('Astana')) {
+      trimmed = '$trimmed, Астана';
+    }
+    
+    // Clean up any double spaces/commas
+    trimmed = trimmed.replaceAll(RegExp(r',\s*,'), ',');
+    return trimmed;
   }
 
+  static List<String> cleanAndSplitCamelCase(String text) {
+    if (text.isEmpty) return [];
+    
+    // Split camel case words stuck together, e.g. "соусСливочная" -> "соус\nСливочная"
+    var cleaned = text.replaceAllMapped(RegExp(r'([а-яa-z])([А-ЯA-Z])'), (m) => '${m[1]}\n${m[2]}');
+    cleaned = cleaned.replaceAllMapped(RegExp(r'([a-z])([A-Z])'), (m) => '${m[1]}\n${m[2]}');
+    
+    return cleaned
+        .split('\n')
+        .map((e) => e.trim())
+        .where((e) => e.isNotEmpty)
+        .toList();
+  }
+
+  static List<dynamic> _cleanList(List<dynamic>? raw) {
+    if (raw == null) return [];
+    final cleaned = <String>[];
+    for (var item in raw) {
+      final str = item.toString().trim();
+      if (str.isEmpty) continue;
+      final parts = cleanAndSplitCamelCase(str);
+      cleaned.addAll(parts);
+    }
+    return cleaned;
+  }
 
   // --- Хелпер: обогащение продукта (аватарка, адрес, категория) ---
   static Map<String, dynamic> _enrichProduct(String id, Map<String, dynamic> data) {
@@ -164,16 +180,30 @@ class ApiService {
 
     // Clean steps lists if they exist
     if (result['steps'] is List) {
-      result['steps'] = _cleanStepsList(result['steps']);
+      result['steps'] = _cleanList(result['steps']);
     }
     if (result['stepsRu'] is List) {
-      result['stepsRu'] = _cleanStepsList(result['stepsRu']);
+      result['stepsRu'] = _cleanList(result['stepsRu']);
     }
     if (result['stepsKz'] is List) {
-      result['stepsKz'] = _cleanStepsList(result['stepsKz']);
+      result['stepsKz'] = _cleanList(result['stepsKz']);
     }
     if (result['stepsEn'] is List) {
-      result['stepsEn'] = _cleanStepsList(result['stepsEn']);
+      result['stepsEn'] = _cleanList(result['stepsEn']);
+    }
+
+    // Clean ingredients lists if they exist
+    if (result['ingredients'] is List) {
+      result['ingredients'] = _cleanList(result['ingredients']);
+    }
+    if (result['ingredientsRu'] is List) {
+      result['ingredientsRu'] = _cleanList(result['ingredientsRu']);
+    }
+    if (result['ingredientsKz'] is List) {
+      result['ingredientsKz'] = _cleanList(result['ingredientsKz']);
+    }
+    if (result['ingredientsEn'] is List) {
+      result['ingredientsEn'] = _cleanList(result['ingredientsEn']);
     }
 
     // Нормализуем категорию
@@ -186,20 +216,33 @@ class ApiService {
     final sellerId = (result['sellerId'] ?? '').toString();
     final logo = (result['sellerLogo'] ?? '').toString();
     
-    if (sellerId == 'gulzira') {
+    final sId = sellerId.toLowerCase().trim();
+    final sName = (result['sellerName'] ?? '').toString().toLowerCase().trim();
+    
+    if (sId == 'gulzira' || sId == 'гүлзира' || sName.contains('гүлзира') || sName.contains('gulzira')) {
       result['sellerLogo'] = 'assets/images/avatar_gulzira.jpg';
-    } else if (sellerId == 'nazgul') {
+    } else if (sId == 'nazgul' || sId == 'назгүл' || sName.contains('назгүл') || sName.contains('nazgul')) {
       result['sellerLogo'] = 'assets/images/avatar_nazgul.jpg';
-    } else if (sellerId == 'zarina') {
+    } else if (sId == 'zarina' || sId == 'зарина' || sName.contains('зарина') || sName.contains('zarina') || sId == 'seller_5' || sName.contains('гульнара') || sName.contains('gulnara')) {
       result['sellerLogo'] = 'assets/images/avatar_zarina.jpg';
-    } else if (sellerId == 'madina') {
+    } else if (sId == 'madina' || sId == 'мәдина' || sName.contains('мәдина') || sName.contains('madina') || sId == 'seller_3' || sName.contains('мадина')) {
       result['sellerLogo'] = 'assets/images/avatar_madina.jpg';
-    } else if (sellerId == 'aigerim') {
+    } else if (sId == 'aigerim' || sId == 'айгерім' || sName.contains('айгерім') || sName.contains('айгерим') || sId == 'seller_1' || sName.contains('aigerim')) {
       result['sellerLogo'] = 'assets/images/avatar_aigerim.jpg';
-    } else if (sellerId == 'arman') {
+    } else if (sId == 'kamila' || sId == 'камила' || sName.contains('камила') || sName.contains('kamila')) {
+      result['sellerLogo'] = 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=150&h=150&fit=crop';
+    } else if (sId == 'arman' || sId == 'арман' || sName.contains('арман') || sName.contains('arman') || sId == 'seller_2' || sName.contains('данияр') || sName.contains('daniyar')) {
       result['sellerLogo'] = 'assets/images/avatar_arman.jpg';
-    } else if (sellerId == 'chef_erkebulan') {
+    } else if (sId == 'chef_erkebulan' || sId == 'шеф еркебұлан' || sName.contains('еркебұлан') || sName.contains('еркебулан') || sId == 'seller_4' || sName.contains('бакытжан') || sName.contains('bakytzhan') || sName.contains('бақытжан')) {
       result['sellerLogo'] = 'assets/images/avatar_erkebulan.jpg';
+    } else if (sId == 'dias' || sId == 'диас' || sName.contains('диас') || sName.contains('dias')) {
+      result['sellerLogo'] = 'https://images.unsplash.com/photo-1547425260-76bcad5ce729?w=150&h=150&fit=crop';
+    } else if (sId == 'rustem' || sId == 'рүстем' || sName.contains('рүстем') || sName.contains('рустем') || sName.contains('rustem')) {
+      result['sellerLogo'] = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop';
+    } else if (sId == 'jandos' || sId == 'жандос' || sName.contains('жандос') || sName.contains('jandos')) {
+      result['sellerLogo'] = 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop';
+    } else if (sId == 'bagdat' || sId == 'бағдат' || sName.contains('бағдат') || sName.contains('багдат') || sName.contains('bagdat')) {
+      result['sellerLogo'] = 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&h=150&fit=crop';
     } else if (logo.isEmpty || 
                logo.contains('pravatar.cc') || 
                logo.contains('randomuser.me') || 
@@ -389,6 +432,47 @@ ${jsonEncode(simplifiedProducts)}
     return {'ok': true, 'results': results, 'fromAi': false};
   }
 
+  static Map<String, dynamic> _enrichUserData(String id, Map<String, dynamic> data) {
+    final updated = Map<String, dynamic>.from(data);
+    final sId = id.toLowerCase().trim();
+    final sName = '${updated['name'] ?? ''} ${updated['surname'] ?? ''}'.toLowerCase().trim();
+
+    // Map default seller logos (female vs male)
+    if (sId == 'gulzira' || sId == 'гүлзира' || sName.contains('гүлзира') || sName.contains('gulzira')) {
+      updated['sellerLogo'] = 'assets/images/avatar_gulzira.jpg';
+    } else if (sId == 'nazgul' || sId == 'назгүл' || sName.contains('назгүл') || sName.contains('nazgul')) {
+      updated['sellerLogo'] = 'assets/images/avatar_nazgul.jpg';
+    } else if (sId == 'zarina' || sId == 'зарина' || sName.contains('зарина') || sName.contains('zarina') || sId == 'seller_5' || sName.contains('гульнара') || sName.contains('gulnara')) {
+      updated['sellerLogo'] = 'assets/images/avatar_zarina.jpg';
+    } else if (sId == 'madina' || sId == 'мәдина' || sName.contains('мәдина') || sName.contains('madina') || sId == 'seller_3' || sName.contains('мадина')) {
+      updated['sellerLogo'] = 'assets/images/avatar_madina.jpg';
+    } else if (sId == 'aigerim' || sId == 'айгерім' || sName.contains('айгерім') || sName.contains('айгерим') || sId == 'seller_1' || sName.contains('aigerim')) {
+      updated['sellerLogo'] = 'assets/images/avatar_aigerim.jpg';
+    } else if (sId == 'kamila' || sId == 'камила' || sName.contains('камила') || sName.contains('kamila')) {
+      updated['sellerLogo'] = 'https://images.unsplash.com/photo-1554151228-14d9def656e4?w=150&h=150&fit=crop';
+    } else if (sId == 'arman' || sId == 'арман' || sName.contains('арман') || sName.contains('arman') || sId == 'seller_2' || sName.contains('данияр') || sName.contains('daniyar')) {
+      updated['sellerLogo'] = 'assets/images/avatar_arman.jpg';
+    } else if (sId == 'chef_erkebulan' || sId == 'шеф еркебұлан' || sName.contains('еркебұлан') || sName.contains('еркебулан') || sId == 'seller_4' || sName.contains('бакытжан') || sName.contains('bakytzhan') || sName.contains('бақытжан')) {
+      updated['sellerLogo'] = 'assets/images/avatar_erkebulan.jpg';
+    } else if (sId == 'dias' || sId == 'диас' || sName.contains('диас') || sName.contains('dias')) {
+      updated['sellerLogo'] = 'https://images.unsplash.com/photo-1547425260-76bcad5ce729?w=150&h=150&fit=crop';
+    } else if (sId == 'rustem' || sId == 'рүстем' || sName.contains('рүстем') || sName.contains('рустем') || sName.contains('rustem')) {
+      updated['sellerLogo'] = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop';
+    } else if (sId == 'jandos' || sId == 'жандос' || sName.contains('жандос') || sName.contains('jandos')) {
+      updated['sellerLogo'] = 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&h=150&fit=crop';
+    } else if (sId == 'bagdat' || sId == 'бағдат' || sName.contains('бағдат') || sName.contains('багдат') || sName.contains('bagdat')) {
+      updated['sellerLogo'] = 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&h=150&fit=crop';
+    }
+
+    if (updated.containsKey('deliveryAddress')) {
+      updated['deliveryAddress'] = normalizeAstanaAddress(updated['deliveryAddress']?.toString() ?? '');
+    }
+    if (updated.containsKey('address')) {
+      updated['address'] = normalizeAstanaAddress(updated['address']?.toString() ?? '');
+    }
+    return updated;
+  }
+
   // --- Қолданушы ---
   static Future<Map<String, dynamic>> getUserById(String userId) async {
     final doc = await _db.collection('users').doc(userId).get();
@@ -403,9 +487,9 @@ ${jsonEncode(simplifiedProducts)}
         'userId': userId,
       };
       await _db.collection('users').doc(userId).set(defaultData);
-      return {'ok': true, 'user': defaultData};
+      return {'ok': true, 'user': _enrichUserData(userId, defaultData)};
     }
-    return {'ok': true, 'user': {'userId': doc.id, ...?doc.data()}};
+    return {'ok': true, 'user': {'userId': doc.id, ..._enrichUserData(doc.id, doc.data()!)}};
   }
 
   static Future<void> updateUserAddress(String userId, String address) async {
@@ -570,6 +654,9 @@ ${jsonEncode(simplifiedProducts)}
         resolvedItems.add({
           'productId': productId,
           'title': pDoc['title'] ?? pDoc['titleRu'] ?? '',
+          'titleRu': pDoc['titleRu'] ?? pDoc['title'] ?? '',
+          'titleKz': pDoc['titleKz'] ?? pDoc['title'] ?? '',
+          'titleEn': pDoc['titleEn'] ?? pDoc['title'] ?? '',
           'price': pDoc['price'] ?? 0,
           'quantity': quantity,
           'imageUrl': pDoc['imageUrl'] ?? '',
@@ -727,154 +814,7 @@ ${jsonEncode(simplifiedProducts)}
     }
   }
 
-  static Future<void> _runAiTranslations(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) async {
-    try {
-      final untranslated = docs.where((doc) {
-        final data = doc.data();
-        final titleKz = (data['titleKz'] ?? '').toString().toLowerCase();
-        final descKz = (data['descriptionKz'] ?? '').toString().toLowerCase();
-        
-        final hasMachineTranslation = titleKz.contains('ыстық ыдыс') || 
-                                     descKz.contains('ыстық ыдыс') ||
-                                     titleKz.contains('батырыңыз') ||
-                                     descKz.contains('батырыңыз');
-                                     
-        return data['isTranslatedByAI'] != true || hasMachineTranslation;
-      }).toList();
 
-      if (untranslated.isEmpty) {
-        print('All products are already translated by Gemini.');
-        return;
-      }
-
-      print('Starting Gemini batch translations for ${untranslated.length} products...');
-
-      final batchSize = 5;
-      for (int i = 0; i < untranslated.length; i += batchSize) {
-        final endIdx = i + batchSize > untranslated.length ? untranslated.length : i + batchSize;
-        final batch = untranslated.sublist(i, endIdx);
-        
-        final batchData = batch.map((doc) {
-          final data = doc.data();
-          return {
-            'id': doc.id,
-            'titleEn': data['titleEn'] ?? '',
-            'titleRu': data['titleRu'] ?? data['title'] ?? '',
-            'descriptionEn': data['descriptionEn'] ?? '',
-            'ingredientsEn': data['ingredientsEn'] ?? data['ingredients'] ?? [],
-            'stepsEn': data['stepsEn'] ?? data['steps'] ?? [],
-          };
-        }).toList();
-
-        final prompt = '''
-You are a professional chef and translator fluent in English, Russian, and Kazakh.
-Translate the following batch of ${batch.length} recipes into high-quality culinary Russian and Kazakh.
-Make sure the Kazakh translations are natural and sound like authentic Kazakh recipe terms, NOT literal machine translations (e.g. do NOT translate "hot pot" as "ыстық ыдыс", use "бұқтырылған ет" or "сорпа/ыстық тағам" or appropriate term; do NOT translate "dip" as "батырыңыз" or "батыру", use "тұздық" or "соус"; translate cooking terms naturally).
-For example, "Beans and Sausage Hotpot" should translate in Kazakh to something natural like "Бұршақ қосылған шұжық бұқтырмасы" or similar, NOT "Бұршақ және шұжық ыстық ыдыс".
-
-Recipes to translate:
-${jsonEncode(batchData)}
-
-Return the translations in a JSON array matching the following schema exactly (without any markdown formatting or codeblocks):
-[
-  {
-    "id": "recipe_id",
-    "titleRu": "Natural Russian Title",
-    "titleKz": "Натуралды қазақша атауы",
-    "descriptionRu": "Natural Russian Description",
-    "descriptionKz": "Натуралды қазақша сипаттамасы",
-    "ingredientsRu": ["Ingredient 1 in RU", "Ingredient 2 in RU"],
-    "ingredientsKz": ["Ingredient 1 in KZ", "Ingredient 2 in KZ"],
-    "stepsRu": ["Step 1 in RU", "Step 2 in RU"],
-    "stepsKz": ["Step 1 in KZ", "Step 2 in KZ"]
-  }
-]
-''';
-
-        print('Sending batch ${i ~/ batchSize + 1} to Gemini...');
-        final translations = await _callGeminiBatch(prompt);
-        if (translations != null && translations is List) {
-          for (var t in translations) {
-            if (t is Map) {
-              final id = t['id']?.toString();
-              if (id == null) continue;
-              final origDoc = batch.firstWhere((doc) => doc.id == id);
-              final origData = origDoc.data();
-
-              final updates = <String, dynamic>{
-                'titleRu': t['titleRu'] ?? origData['titleRu'],
-                'titleKz': t['titleKz'] ?? origData['titleKz'],
-                'descriptionRu': t['descriptionRu'] ?? origData['descriptionRu'],
-                'descriptionKz': t['descriptionKz'] ?? origData['descriptionKz'],
-                'ingredientsRu': t['ingredientsRu'] ?? origData['ingredientsRu'],
-                'ingredientsKz': t['ingredientsKz'] ?? origData['ingredientsKz'],
-                'stepsRu': t['stepsRu'] ?? origData['stepsRu'],
-                'stepsKz': t['stepsKz'] ?? origData['stepsKz'],
-                'isTranslatedByAI': true,
-              };
-
-              if (origData['title'] == null || origData['title'].toString().isEmpty || origData['title'] == origData['titleEn']) {
-                updates['title'] = t['titleRu'];
-              }
-              if (origData['description'] == null || origData['description'].toString().isEmpty || origData['description'] == origData['descriptionEn']) {
-                updates['description'] = t['descriptionRu'];
-              }
-              if (origData['ingredients'] == null || (origData['ingredients'] as List).isEmpty) {
-                updates['ingredients'] = t['ingredientsRu'];
-              }
-              if (origData['steps'] == null || (origData['steps'] as List).isEmpty) {
-                updates['steps'] = t['stepsRu'];
-              }
-
-              await _db.collection('products').doc(id).update(updates);
-              print('  Updated product $id -> ${t['titleKz']}');
-            }
-          }
-        }
-
-        // Wait between batches to respect rate limits
-        await Future.delayed(const Duration(seconds: 8));
-      }
-      print('Batch translation task completed.');
-    } catch (e) {
-      print('AI Batch Translation background task error: $e');
-    }
-  }
-
-  static Future<dynamic> _callGeminiBatch(String prompt) async {
-    try {
-      final url = Uri.parse(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$_geminiApiKey'
-      );
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'parts': [
-                {'text': prompt}
-              ]
-            }
-          ],
-          'generationConfig': {
-            'responseMimeType': 'application/json',
-          }
-        }),
-      ).timeout(const Duration(seconds: 25));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final textResponse = data['candidates']?[0]?['content']?[0]?['parts']?[0]?['text']?.toString() ?? '';
-        return jsonDecode(textResponse.trim());
-      } else {
-        print('Gemini API Error: ${response.statusCode} - ${response.body}');
-      }
-    } catch (e) {
-      print('Gemini Batch API Call Error: $e');
-    }
-    return null;
-  }
 
   static List<String> _splitStringToSteps(String text) {
     if (text.isEmpty) return [];
@@ -915,7 +855,7 @@ Return the translations in a JSON array matching the following schema exactly (w
   static Future<Map<String, dynamic>> getUserProfile(String userId) async {
     final doc = await _db.collection('users').doc(userId).get();
     if (!doc.exists) return {};
-    return doc.data()!;
+    return _enrichUserData(userId, doc.data()!);
   }
 
   static Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
@@ -924,7 +864,7 @@ Return the translations in a JSON array matching the following schema exactly (w
 
   static Future<List<Map<String, dynamic>>> getAllUsers() async {
     final snap = await _db.collection('users').get();
-    return snap.docs.map((d) => {'userId': d.id, '_id': d.id, ...d.data()}).toList();
+    return snap.docs.map((d) => {'userId': d.id, '_id': d.id, ..._enrichUserData(d.id, d.data())}).toList();
   }
 
   static Future<void> updateUserRole(String userId, bool isAdmin) async {

@@ -10,7 +10,7 @@ void main() {
     expect(find.byType(ForgotPasswordScreen), findsOneWidget); // 1. Экран бар ма?
     expect(find.byType(TextField), findsAtLeastNWidgets(1));  // 2. Поля бар ма?
     expect(find.byType(ElevatedButton), findsOneWidget);     // 3. Батырма бар ма?
-    expect(find.text('Қалпына келтіру кодын жіберу'), findsOneWidget); // 4. Текст дұрыс па?
+    expect(find.text('Сілтемені жіберу'), findsOneWidget); // 4. Текст дұрыс па?
     expect(find.byIcon(Icons.email_outlined), findsAtLeastNWidgets(1)); // 5. Иконка бар ма?
   });
 

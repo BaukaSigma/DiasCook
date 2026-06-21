@@ -66,6 +66,8 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         return lang == 'kz' ? 'Дайындалуда' : (lang == 'en' ? 'Cooking' : 'Готовится');
       case 'ready':
         return lang == 'kz' ? 'Дайын' : (lang == 'en' ? 'Ready' : 'Готов');
+      case 'delivering':
+        return lang == 'kz' ? 'Жеткізілуде' : (lang == 'en' ? 'Delivering' : 'Доставляется');
       case 'completed':
         return lang == 'kz' ? 'Аяқталды' : (lang == 'en' ? 'Completed' : 'Завершён');
       case 'cancelled':
@@ -83,6 +85,8 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
         return Colors.amber.shade700;
       case 'ready':
         return Colors.blue;
+      case 'delivering':
+        return Colors.purple;
       case 'completed':
         return Colors.green;
       case 'cancelled':
@@ -228,10 +232,25 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Text(
-                                              item['title'] ?? '',
-                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                           Expanded(
+                                            child: Builder(
+                                              builder: (context) {
+                                                String itemTitle = '';
+                                                if (lang == 'kz') {
+                                                  itemTitle = item['titleKz'] ?? '';
+                                                } else if (lang == 'ru') {
+                                                  itemTitle = item['titleRu'] ?? '';
+                                                } else if (lang == 'en') {
+                                                  itemTitle = item['titleEn'] ?? '';
+                                                }
+                                                if (itemTitle.isEmpty) {
+                                                  itemTitle = item['title'] ?? '';
+                                                }
+                                                return Text(
+                                                  itemTitle,
+                                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                                );
+                                              }
                                             ),
                                           ),
                                           Text(
@@ -296,15 +315,19 @@ class _SellerOrdersScreenState extends State<SellerOrdersScreen> {
                                     scrollDirection: Axis.horizontal,
                                     child: Row(
                                       children: [
-                                        _buildStatusButton('accepted', Loc.lang.value == 'en' ? 'Accepted' : 'Принят', Colors.orange, status, orderId),
-                                        const SizedBox(width: 8),
-                                        _buildStatusButton('cooking', Loc.lang.value == 'en' ? 'Cooking' : 'Готовится', Colors.amber.shade700, status, orderId),
-                                        const SizedBox(width: 8),
-                                        _buildStatusButton('ready', Loc.lang.value == 'en' ? 'Ready' : 'Готов', Colors.blue, status, orderId),
-                                        const SizedBox(width: 8),
-                                        _buildStatusButton('completed', Loc.lang.value == 'en' ? 'Completed' : 'Завершён', Colors.green, status, orderId),
-                                        const SizedBox(width: 8),
-                                        _buildStatusButton('cancelled', Loc.lang.value == 'en' ? 'Cancelled' : 'Отменён', Colors.red, status, orderId),
+                                         _buildStatusButton('accepted', Loc.lang.value == 'en' ? 'Accepted' : 'Принят', Colors.orange, status, orderId),
+                                         const SizedBox(width: 8),
+                                         _buildStatusButton('cooking', Loc.lang.value == 'en' ? 'Cooking' : 'Готовится', Colors.amber.shade700, status, orderId),
+                                         const SizedBox(width: 8),
+                                         _buildStatusButton('ready', Loc.lang.value == 'en' ? 'Ready' : 'Готов', Colors.blue, status, orderId),
+                                         if (deliveryType == 'external_delivery') ...[
+                                           const SizedBox(width: 8),
+                                           _buildStatusButton('delivering', Loc.lang.value == 'en' ? 'Delivering' : 'Доставляется', Colors.purple, status, orderId),
+                                         ],
+                                         const SizedBox(width: 8),
+                                         _buildStatusButton('completed', Loc.lang.value == 'en' ? 'Completed' : 'Завершён', Colors.green, status, orderId),
+                                         const SizedBox(width: 8),
+                                         _buildStatusButton('cancelled', Loc.lang.value == 'en' ? 'Cancelled' : 'Отменён', Colors.red, status, orderId),
                                       ],
                                     ),
                                   ),
