@@ -630,11 +630,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${Loc.tr('error')}: $e')));
                       }
                     },
-                    icon: const Icon(Icons.shopping_cart),
-                    label: Text(Loc.tr('add_to_cart')),
+                    icon: const Icon(Icons.shopping_cart, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        Loc.tr('add_to_cart'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green.shade800,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
                     ),
                   ),
                 ),
@@ -642,11 +648,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 Expanded(
                   child: ElevatedButton.icon(
                     onPressed: () => _showContactDialog(context, sellerName, sellerLogo, instagram, phone, fullAddress),
-                    icon: const Icon(Icons.contact_phone),
-                    label: Text(Loc.tr('contact_seller')),
+                    icon: const Icon(Icons.contact_phone, size: 18),
+                    label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        Loc.tr('contact_seller'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.orange.shade800,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 4),
                     ),
                   ),
                 ),

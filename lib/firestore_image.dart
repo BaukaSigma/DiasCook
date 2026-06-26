@@ -31,24 +31,43 @@ class _FirestoreImageState extends State<FirestoreImage> {
   @override
   void initState() {
     super.initState();
+    _initValues();
     _load();
+  }
+
+  void _initValues() {
+    final url = widget.imageUrl;
+    if (url.startsWith('firestore_image:')) {
+      final docId = url.replaceFirst('firestore_image:', '');
+      if (_imageCache.containsKey(docId)) {
+        _bytes = _imageCache[docId];
+        _loading = false;
+      } else {
+        _bytes = null;
+        _loading = true;
+      }
+    } else {
+      _bytes = null;
+      _loading = false;
+    }
   }
 
   @override
   void didUpdateWidget(FirestoreImage old) {
     super.didUpdateWidget(old);
-    if (old.imageUrl != widget.imageUrl) _load();
+    if (old.imageUrl != widget.imageUrl) {
+      _initValues();
+      _load();
+    }
   }
 
   Future<void> _load() async {
     final url = widget.imageUrl;
     if (!url.startsWith('firestore_image:')) {
-      if (mounted) setState(() => _loading = false);
       return;
     }
     final docId = url.replaceFirst('firestore_image:', '');
     if (_imageCache.containsKey(docId)) {
-      if (mounted) setState(() { _bytes = _imageCache[docId]; _loading = false; });
       return;
     }
     try {
@@ -57,11 +76,18 @@ class _FirestoreImageState extends State<FirestoreImage> {
       if (dataUrl.contains(',')) {
         final bytes = base64Decode(dataUrl.split(',').last);
         _imageCache[docId] = bytes;
-        if (mounted) setState(() { _bytes = bytes; _loading = false; });
+        if (mounted && widget.imageUrl == url) {
+          setState(() {
+            _bytes = bytes;
+            _loading = false;
+          });
+        }
         return;
       }
     } catch (_) {}
-    if (mounted) setState(() => _loading = false);
+    if (mounted && widget.imageUrl == url) {
+      setState(() => _loading = false);
+    }
   }
 
   @override

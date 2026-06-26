@@ -219,7 +219,9 @@ class ApiService {
     final sId = sellerId.toLowerCase().trim();
     final sName = (result['sellerName'] ?? '').toString().toLowerCase().trim();
     
-    if (sId == 'gulzira' || sId == 'гүлзира' || sName.contains('гүлзира') || sName.contains('gulzira')) {
+    if (logo.startsWith('firestore_image:') || logo.startsWith('data:')) {
+      // Keep custom uploaded logo
+    } else if (sId == 'gulzira' || sId == 'гүлзира' || sName.contains('гүлзира') || sName.contains('gulzira')) {
       result['sellerLogo'] = 'assets/images/avatar_gulzira.jpg';
     } else if (sId == 'nazgul' || sId == 'назгүл' || sName.contains('назгүл') || sName.contains('nazgul')) {
       result['sellerLogo'] = 'assets/images/avatar_nazgul.jpg';
@@ -436,9 +438,12 @@ ${jsonEncode(simplifiedProducts)}
     final updated = Map<String, dynamic>.from(data);
     final sId = id.toLowerCase().trim();
     final sName = '${updated['name'] ?? ''} ${updated['surname'] ?? ''}'.toLowerCase().trim();
+    final logo = (updated['sellerLogo'] ?? '').toString();
 
     // Map default seller logos (female vs male)
-    if (sId == 'gulzira' || sId == 'гүлзира' || sName.contains('гүлзира') || sName.contains('gulzira')) {
+    if (logo.startsWith('firestore_image:') || logo.startsWith('data:')) {
+      // Keep custom uploaded logo
+    } else if (sId == 'gulzira' || sId == 'гүлзира' || sName.contains('гүлзира') || sName.contains('gulzira')) {
       updated['sellerLogo'] = 'assets/images/avatar_gulzira.jpg';
     } else if (sId == 'nazgul' || sId == 'назгүл' || sName.contains('назгүл') || sName.contains('nazgul')) {
       updated['sellerLogo'] = 'assets/images/avatar_nazgul.jpg';

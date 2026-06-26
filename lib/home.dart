@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:first/api.dart'; 
 import 'profile.dart'; 
 import 'search.dart';
@@ -516,6 +515,11 @@ class _ProductCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             child: Image.network(sellerLogo, width: 36, height: 36, fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => _initials(sellerName)),
+          );
+        } else if (sellerLogo.startsWith('firestore_image:') || sellerLogo.startsWith('data:')) {
+          logoWidget = ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: FirestoreImage(imageUrl: sellerLogo, width: 36, height: 36, fit: BoxFit.cover),
           );
         } else {
           logoWidget = _initials(sellerName);
